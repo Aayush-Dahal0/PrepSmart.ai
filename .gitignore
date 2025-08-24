@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Node
+node_modules/
+dist/
+build/
+
+# Docker
+*.pid
+*.log
+db_data/
+minio_data/
+
+# VSCode/IDE
+.vscode/
+.idea/
+
+.api_collections.txt
+.schema.txt

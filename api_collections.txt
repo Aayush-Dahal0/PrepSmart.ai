@@ -1,0 +1,154 @@
+Step 1. Open Postman
+
+Download and install Postman if you don’t already have it.
+
+Start your FastAPI server:
+
+uvicorn app.main:app --reload
+
+
+By default, it runs at http://127.0.0.1:8000
+.
+
+🔹 Step 2. Test Auth APIs
+➤ Register
+
+Open a new request in Postman.
+
+Select POST.
+
+URL:
+
+http://127.0.0.1:8000/auth/register
+
+
+Go to the Body → raw → JSON tab.
+
+Paste:
+
+{
+  "email": "me@example.com",
+  "password": "test12345"
+}
+
+
+Click Send.
+→ You should get a JSON with "id": "...".
+
+➤ Login
+
+Create another POST request.
+
+URL:
+
+http://127.0.0.1:8000/auth/login
+
+
+Body → JSON:
+
+{
+  "email": "me@example.com",
+  "password": "test12345"
+}
+
+
+Click Send.
+→ You’ll get:
+
+{
+  "access_token": "xxxx.yyy.zzz",
+  "token_type": "bearer"
+}
+
+
+👉 Copy the access_token.
+
+🔹 Step 3. Test Conversations APIs
+➤ Create Conversation
+
+New request → POST.
+
+URL:
+
+http://127.0.0.1:8000/conversations
+
+
+Go to Headers tab → add:
+
+Authorization: Bearer <your_access_token_here>
+
+
+Body → JSON:
+
+{
+  "title": "DSA Interview",
+  "domain": "backend"
+}
+
+
+Click Send.
+→ You’ll get a conversation "id".
+
+➤ List Conversations
+
+New request → GET.
+
+URL:
+
+http://127.0.0.1:8000/conversations
+
+
+Add the same Authorization: Bearer <token>.
+
+Click Send → You’ll see all convos.
+
+🔹 Step 4. Test Chat Streaming
+
+⚡ This route streams Server-Sent Events (SSE). Postman can show the full response when finished, but it won’t stream nicely in real-time. Still, you can test.
+
+New request → POST.
+
+URL:
+
+http://127.0.0.1:8000/chat/stream
+
+
+Headers:
+
+Authorization: Bearer <token>
+Content-Type: application/json
+
+
+Body → raw → JSON:
+
+{
+  "conversation_id": "PUT-YOUR-CONV-ID-HERE",
+  "user_message": "Can you ask me a backend interview question?"
+}
+
+
+Send → You’ll get a response like:
+
+data: Hello! Let's start with...
+data: Can you explain the difference...
+data: [DONE]
+
+
+👉 For real-time streaming (instead of chunked dump), use curl or your React frontend.
+
+🔹 Step 5. Test Messages History
+
+New request → GET.
+
+URL:
+
+http://127.0.0.1:8000/messages/<conv_id>
+
+
+Add Authorization: Bearer <token>.
+
+Send → You’ll see full chat history stored in DB.
+
+✅ That’s it! Now you can hit all APIs in Postman.
+
+Do you want me to make a ready-to-import Postman Collection (JSON file) so you just open it in Postman and all routes (auth, conversations, chat, messages) are preloaded?
