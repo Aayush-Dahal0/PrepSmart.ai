@@ -19,5 +19,5 @@ minio_data/
 .vscode/
 .idea/
 
-.api_collections.txt
-.schema.txt
+api_collections.txt
+schema.txt
