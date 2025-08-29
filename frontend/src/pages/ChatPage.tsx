@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
 import { useMessages, sendChatMessage, Message } from '@/hooks/useApi';
 import { ArrowLeft, Send, BrainCircuit, User, Bot } from 'lucide-react';
+import FormattedMessage from '@/components/FormattedMessage';
 
 const ChatPage = () => {
   const { chatId } = useParams<{ chatId: string }>();
@@ -179,12 +180,21 @@ const ChatPage = () => {
                           : 'bg-card border border-border'
                       }`}
                     >
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                      <div className="text-xs opacity-70 mt-1">
-                        {new Date(message.timestamp).toLocaleTimeString([], { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })}
+                      {message.role === 'assistant' ? (
+                        <FormattedMessage content={message.content} />
+                      ) : (
+                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      )}
+                      <div className="text-xs opacity-70 mt-3">
+                        {(() => {
+                          const date = new Date(message.timestamp);
+                          return isNaN(date.getTime()) 
+                            ? 'Just now' 
+                            : date.toLocaleTimeString([], { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              });
+                        })()}
                       </div>
                     </div>
 

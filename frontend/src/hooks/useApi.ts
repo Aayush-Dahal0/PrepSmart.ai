@@ -6,7 +6,7 @@ const getAuthHeaders = () => {
   const token = localStorage.getItem('auth_token');
   return {
     'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` }),
+    ...(token && { Authorization: `Bearer ${token}` }),
   };
 };
 
@@ -25,6 +25,7 @@ export interface Message {
   timestamp: string;
 }
 
+// ------------------- Conversations Hook -------------------
 export const useConversations = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +36,7 @@ export const useConversations = () => {
       const response = await fetch(`${API_BASE_URL}/conversations`, {
         headers: getAuthHeaders(),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setConversations(data);
@@ -51,12 +52,15 @@ export const useConversations = () => {
     fetchConversations();
   }, []);
 
-  const createConversation = async (title: string): Promise<string | null> => {
+  const createConversation = async (
+    title: string,
+    domain: string = 'backend' // ✅ provide domain, default backend
+  ): Promise<string | null> => {
     try {
       const response = await fetch(`${API_BASE_URL}/conversations`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({ title, domain }), // ✅ backend expects this
       });
 
       if (response.ok) {
@@ -73,6 +77,7 @@ export const useConversations = () => {
   return { conversations, loading, createConversation, refetch: fetchConversations };
 };
 
+// ------------------- Messages Hook -------------------
 export const useMessages = (chatId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,8 +109,9 @@ export const useMessages = (chatId: string) => {
   return { messages, loading, setMessages };
 };
 
+// ------------------- Chat Streaming -------------------
 export const sendChatMessage = async (
-  chatId: string, 
+  chatId: string,
   message: string,
   onChunk?: (chunk: string) => void
 ): Promise<boolean> => {
@@ -113,9 +119,9 @@ export const sendChatMessage = async (
     const response = await fetch(`${API_BASE_URL}/chat/stream`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ 
-        chat_id: chatId, 
-        message 
+      body: JSON.stringify({
+        conversation_id: chatId, // ✅ correct key
+        user_message: message,   // ✅ correct key
       }),
     });
 
@@ -128,9 +134,18 @@ export const sendChatMessage = async (
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        
-        const chunk = decoder.decode(value);
-        onChunk(chunk);
+
+        const chunk = decoder.decode(value, { stream: true });
+        // Parse SSE format: "data: content\n"
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+            const content = line.substring(6); // Remove "data: " prefix
+            if (content.trim()) {
+              onChunk(content);
+            }
+          }
+        }
       }
     }
 

@@ -32,10 +32,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored auth token on mount
     const token = localStorage.getItem('auth_token');
     const userData = localStorage.getItem('user_data');
-    
+
     if (token && userData) {
       try {
         setUser(JSON.parse(userData));
@@ -53,19 +52,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Login response data:', data);
-        const userData = { id: data.user_id || data.id, email, name: data.name };
-        const token = data.access_token || data.token;
-        console.log('Storing token:', token ? 'Token received' : 'No token in response');
-        
+        console.log("🔑 Login response:", data);
+
+        const token = data.access; // ✅ your backend returns "access"
+        if (!token) {
+          console.error("No access token in login response");
+          return false;
+        }
+
+        const userData = data.user
+          ? { id: data.user.id, email: data.user.email, name: data.user.name }
+          : { id: data.user_id || data.id || "unknown", email, name: data.name };
+
         localStorage.setItem('auth_token', token);
         localStorage.setItem('user_data', JSON.stringify(userData));
         setUser(userData);
@@ -85,17 +89,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, name }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        const userData = { id: data.user_id || data.id, email, name: name || data.name };
-        
-        localStorage.setItem('auth_token', data.access_token || data.token);
+        console.log("📝 Register response:", data);
+
+        const token = data.access; // ✅ same fix here
+        if (!token) {
+          console.error("No access token in register response");
+          return false;
+        }
+
+        const userData = data.user
+          ? { id: data.user.id, email: data.user.email, name: data.user.name }
+          : { id: data.user_id || data.id || "unknown", email, name: name || data.name };
+
+        localStorage.setItem('auth_token', token);
         localStorage.setItem('user_data', JSON.stringify(userData));
         setUser(userData);
         return true;
@@ -120,4 +132,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-};
+}
