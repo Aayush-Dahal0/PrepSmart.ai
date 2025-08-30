@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from ..db import get_pool
-
+import uuid
 async def list_conversations(user_id: str):
     pool = await get_pool()
     rows = await pool.fetch("""
@@ -22,10 +22,15 @@ async def create_conversation(user_id: str, title: str, domain: str):
 
 async def delete_conversation(user_id: str, conv_id: str):
     pool = await get_pool()
+    try:
+        conv_id = uuid.UUID(conv_id)  # ensure valid UUID
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid conversation ID")
+
     result = await pool.execute("""
-        delete from conversations
-        where id = $1 and user_id = $2
+        DELETE FROM conversations
+        WHERE id = $1 AND user_id = $2
     """, conv_id, user_id)
-    # asyncpg returns 'DELETE <count>'
-    if result.split()[-1] == "0":
+
+    if result == "DELETE 0":
         raise HTTPException(status_code=404, detail="Conversation not found or not owned by user")

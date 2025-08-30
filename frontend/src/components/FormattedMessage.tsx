@@ -90,12 +90,32 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content }) => {
         return;
       }
 
-      // Handle numbered list items
-      const listMatch = trimmedLine.match(/^(\d+)\.\s+\*\*(.*?)\*\*:\s*(.*)/);
+      // Handle numbered list items with optional bold formatting
+      const listMatch = trimmedLine.match(/^(\d+)\.\s+(.*)/);
       if (listMatch) {
-        const [, , title, description] = listMatch;
+        const [, , content] = listMatch;
+        // Check if it has bold title format
+        const boldTitleMatch = content.match(/^\*\*(.*?)\*\*:\s*(.*)/);
+        if (boldTitleMatch) {
+          const [, title, description] = boldTitleMatch;
+          currentList.push(
+            `<div class="font-semibold text-foreground mb-1">${title}</div><div class="text-muted-foreground">${description}</div>`
+          );
+        } else {
+          // Simple numbered item
+          currentList.push(
+            `<div class="text-muted-foreground">${content}</div>`
+          );
+        }
+        return;
+      }
+
+      // Handle bullet points
+      const bulletMatch = trimmedLine.match(/^[\*\-]\s+(.*)/);
+      if (bulletMatch) {
+        const [, content] = bulletMatch;
         currentList.push(
-          `<div class="font-semibold text-foreground mb-1">${title}</div><div class="text-muted-foreground">${description}</div>`
+          `<div class="text-muted-foreground">${content}</div>`
         );
         return;
       }

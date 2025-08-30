@@ -4,16 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useApi';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, MessageSquare, Calendar, User, LogOut, BrainCircuit } from 'lucide-react';
+import { Plus, MessageSquare, Calendar, User, LogOut, BrainCircuit, Trash2 } from 'lucide-react';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
-  const { conversations, loading, createConversation } = useConversations();
+  const { conversations, loading, createConversation, deleteConversation, refetch } = useConversations();
   const [newConversationTitle, setNewConversationTitle] = useState('');
+  const [selectedDomain, setSelectedDomain] = useState('backend');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -21,7 +23,7 @@ const Dashboard = () => {
   const handleCreateConversation = async () => {
     if (!newConversationTitle.trim()) return;
     
-    const conversationId = await createConversation(newConversationTitle);
+    const conversationId = await createConversation(newConversationTitle, selectedDomain);
     if (conversationId) {
       toast({ title: "Interview session created!", description: "Ready to start practicing." });
       navigate(`/chat/${conversationId}`);
@@ -29,7 +31,18 @@ const Dashboard = () => {
       toast({ title: "Failed to create session", description: "Please try again.", variant: "destructive" });
     }
     setNewConversationTitle('');
+    setSelectedDomain('backend');
     setIsCreateDialogOpen(false);
+  };
+
+  const handleDeleteConversation = async (id: string) => {
+    const ok = await deleteConversation(id);
+    if (ok) {
+      toast({ title: "Session deleted", description: "The session has been removed." });
+      refetch();
+    } else {
+      toast({ title: "Failed to delete session", description: "Please try again.", variant: "destructive" });
+    }
   };
 
   const handleLogout = () => {
@@ -110,6 +123,26 @@ const Dashboard = () => {
                       onKeyDown={(e) => e.key === 'Enter' && handleCreateConversation()}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="domain-select">Interview Domain</Label>
+                    <Select value={selectedDomain} onValueChange={setSelectedDomain}>
+                      <SelectTrigger id="domain-select">
+                        <SelectValue placeholder="Select interview domain" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="backend">Backend Development</SelectItem>
+                        <SelectItem value="frontend">Frontend Development</SelectItem>
+                        <SelectItem value="fullstack">Full Stack Development</SelectItem>
+                        <SelectItem value="mobile">Mobile Development</SelectItem>
+                        <SelectItem value="devops">DevOps Engineering</SelectItem>
+                        <SelectItem value="data">Data Science/Engineering</SelectItem>
+                        <SelectItem value="ml">Machine Learning</SelectItem>
+                        <SelectItem value="product">Product Management</SelectItem>
+                        <SelectItem value="design">UI/UX Design</SelectItem>
+                        <SelectItem value="general">General Software Engineering</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="flex gap-2 justify-end">
                     <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                       Cancel
@@ -184,10 +217,12 @@ const Dashboard = () => {
                 {conversations.map((conversation) => (
                   <Card 
                     key={conversation.id} 
-                    className="cursor-pointer hover:shadow-elegant transition-smooth transform hover:scale-[1.02] bg-gradient-glass backdrop-blur-sm border-white/20"
-                    onClick={() => navigate(`/chat/${conversation.id}`)}
+                    className="bg-gradient-glass backdrop-blur-sm border-white/20"
                   >
-                    <CardHeader>
+                    <CardHeader 
+                      className="cursor-pointer"
+                      onClick={() => navigate(`/chat/${conversation.id}`)}
+                    >
                       <CardTitle className="truncate">{conversation.title}</CardTitle>
                       <CardDescription>
                         Created {new Date(conversation.created_at).toLocaleDateString()}
@@ -196,7 +231,16 @@ const Dashboard = () => {
                     <CardContent>
                       <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span>{conversation.message_count || 0} messages</span>
-                        <span>Continue →</span>
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleDeleteConversation(conversation.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                          <span className="cursor-pointer text-primary">Continue →</span>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

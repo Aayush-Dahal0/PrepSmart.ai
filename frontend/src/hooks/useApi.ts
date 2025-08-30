@@ -54,7 +54,7 @@ export const useConversations = () => {
 
   const createConversation = async (
     title: string,
-    domain: string = 'backend' // ✅ provide domain, default backend
+    domain: string // ✅ domain is now required
   ): Promise<string | null> => {
     try {
       const response = await fetch(`${API_BASE_URL}/conversations`, {
@@ -74,7 +74,24 @@ export const useConversations = () => {
     return null;
   };
 
-  return { conversations, loading, createConversation, refetch: fetchConversations };
+  const deleteConversation = async (id: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/conversations/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+
+      if (response.ok) {
+        await fetchConversations(); // Refresh list after deletion
+        return true;
+      }
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+    }
+    return false;
+  };
+
+  return { conversations, loading, createConversation, deleteConversation, refetch: fetchConversations };
 };
 
 // ------------------- Messages Hook -------------------
@@ -120,8 +137,8 @@ export const sendChatMessage = async (
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({
-        conversation_id: chatId, // ✅ correct key
-        user_message: message,   // ✅ correct key
+        conversation_id: chatId,
+        user_message: message,
       }),
     });
 
@@ -130,22 +147,48 @@ export const sendChatMessage = async (
     if (onChunk && response.body) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      let buffer = '';
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        // Parse SSE format: "data: content\n"
-        const lines = chunk.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-            const content = line.substring(6); // Remove "data: " prefix
-            if (content.trim()) {
-              onChunk(content);
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (value) {
+            // Decode the chunk and add to buffer
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
+            
+            // Process complete lines from buffer
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Keep incomplete line in buffer
+            
+            for (const line of lines) {
+              const trimmedLine = line.trim();
+              if (trimmedLine.startsWith('data: ') && trimmedLine !== 'data: [DONE]') {
+                const content = trimmedLine.substring(6);
+                if (content.trim()) {
+                  onChunk(content);
+                }
+              }
             }
           }
+          
+          if (done) {
+            // Process any remaining data in buffer
+            if (buffer.trim()) {
+              const trimmedBuffer = buffer.trim();
+              if (trimmedBuffer.startsWith('data: ') && trimmedBuffer !== 'data: [DONE]') {
+                const content = trimmedBuffer.substring(6);
+                if (content.trim()) {
+                  onChunk(content);
+                }
+              }
+            }
+            break;
+          }
         }
+      } finally {
+        reader.releaseLock();
       }
     }
 

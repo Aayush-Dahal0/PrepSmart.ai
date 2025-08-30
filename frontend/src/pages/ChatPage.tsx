@@ -176,24 +176,66 @@ const ChatPage = () => {
                     <div
                       className={`max-w-[70%] rounded-lg px-4 py-3 ${
                         message.role === 'user'
-                          ? 'bg-primary text-primary-foreground ml-auto'
-                          : 'bg-card border border-border'
+                          ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground ml-auto shadow-lg border border-primary/20'
+                          : 'bg-gradient-to-br from-card/95 to-secondary/10 border-2 border-border/50 shadow-md'
                       }`}
                     >
                       {message.role === 'assistant' ? (
-                        <FormattedMessage content={message.content} />
+                        <FormattedMessage content={message.content || "I'm thinking..."} />
                       ) : (
-                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 mb-2">
+                            <User className="h-3 w-3 text-primary-foreground/80" />
+                            <span className="text-xs font-medium text-primary-foreground/90">You asked:</span>
+                          </div>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                        </div>
                       )}
-                      <div className="text-xs opacity-70 mt-3">
+                      <div className={`text-xs mt-3 flex items-center gap-1 ${
+                        message.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground/80'
+                      }`}>
                         {(() => {
-                          const date = new Date(message.timestamp);
-                          return isNaN(date.getTime()) 
-                            ? 'Just now' 
-                            : date.toLocaleTimeString([], { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              });
+                          // Handle multiple timestamp formats from backend
+                          let date: Date;
+                          
+                          if (!message.timestamp) {
+                            return 'Just now';
+                          }
+                          
+                          // Try different parsing approaches
+                          if (typeof message.timestamp === 'string') {
+                            // Backend might return different formats: ISO, Unix timestamp, or date string
+                            if (message.timestamp.match(/^\d+$/)) {
+                              // Unix timestamp (seconds or milliseconds)
+                              const timestamp = parseInt(message.timestamp);
+                              date = new Date(timestamp > 9999999999 ? timestamp : timestamp * 1000);
+                            } else if (message.timestamp.includes('T') || message.timestamp.includes('Z')) {
+                              // ISO format
+                              date = new Date(message.timestamp);
+                            } else {
+                              // Try parsing as regular date string
+                              date = new Date(message.timestamp);
+                            }
+                          } else {
+                            date = new Date(message.timestamp);
+                          }
+                          
+                          if (isNaN(date.getTime())) {
+                            console.warn('Invalid timestamp format:', message.timestamp);
+                            return 'Just now';
+                          }
+                          
+                          const now = new Date();
+                          const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+                          
+                          if (diffInMinutes < 1) return 'Just now';
+                          if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+                          if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+                          
+                          return date.toLocaleTimeString([], { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          });
                         })()}
                       </div>
                     </div>
@@ -205,25 +247,6 @@ const ChatPage = () => {
                     )}
                   </div>
                 ))
-              )}
-
-              {/* Typing indicator */}
-              {isLoading && streamingMessage && (
-                <div className="flex gap-3 animate-fade-in">
-                  <div className="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center">
-                    <Bot className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="bg-card border border-border rounded-lg px-4 py-3 max-w-[70%]">
-                    <div className="flex items-center gap-2">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      </div>
-                      <span className="text-xs text-muted-foreground">AI is thinking...</span>
-                    </div>
-                  </div>
-                </div>
               )}
             </div>
           </ScrollArea>
