@@ -1,5 +1,6 @@
 import httpx
 import json
+from datetime import datetime
 from fastapi import HTTPException
 from ..config import settings
 
@@ -11,16 +12,16 @@ SYSTEM_PROMPT = (
 async def stream_ollama(messages: list[dict]):
     """
     Stream text chunks from a local Ollama server (/api/chat).
-    `messages` should be a list of {role, content} including 'system', 'user', 'assistant'.
+    `messages` should be a list of {role, content}.
     """
     model = getattr(settings, "OLLAMA_MODEL", "llama3")
     url = getattr(settings, "OLLAMA_URL", "http://localhost:11434/api/chat")
 
-    payload = {
-        "model": model,
-        "messages": messages,
-        "stream": True
-    }
+    # Always inject system message at start
+    if not messages or messages[0].get("role") != "system":
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}] + messages
+
+    payload = {"model": model, "messages": messages, "stream": True}
 
     try:
         async with httpx.AsyncClient(timeout=None) as client:
@@ -29,7 +30,6 @@ async def stream_ollama(messages: list[dict]):
                 async for line in r.aiter_lines():
                     if not line:
                         continue
-                    # Ollama streams one JSON object per line
                     try:
                         data = json.loads(line)
                     except json.JSONDecodeError:
@@ -38,8 +38,11 @@ async def stream_ollama(messages: list[dict]):
                     if "message" in data:
                         chunk = data["message"].get("content", "")
                         if chunk:
-                            # Yield raw text (your SSE wrapper in main.py formats it)
-                            yield chunk
+                            yield {
+                                "role": "assistant",
+                                "content": chunk,
+                                "timestamp": datetime.utcnow().isoformat(),
+                            }
 
                     if data.get("done"):
                         break

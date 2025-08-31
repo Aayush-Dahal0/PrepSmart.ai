@@ -111,7 +111,12 @@ export const useMessages = (chatId: string) => {
 
         if (response.ok) {
           const data = await response.json();
-          setMessages(data);
+          // Ensure timestamps are properly handled from backend
+          const messagesWithTimestamps = data.map((msg: Message) => ({
+            ...msg,
+            timestamp: msg.timestamp || new Date().toISOString()
+          }));
+          setMessages(messagesWithTimestamps);
         }
       } catch (error) {
         console.error('Failed to fetch messages:', error);
