@@ -9,13 +9,13 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useApi';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, MessageSquare, Calendar, User, LogOut, BrainCircuit, Trash2 } from 'lucide-react';
+import { Plus, MessageSquare, Calendar, User, LogOut, BrainCircuit } from 'lucide-react';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
-  const { conversations, loading, createConversation, deleteConversation, refetch } = useConversations();
+  const { conversations, loading, createConversation } = useConversations();
   const [newConversationTitle, setNewConversationTitle] = useState('');
-  const [selectedDomain, setSelectedDomain] = useState('backend');
+  const [selectedDomain, setSelectedDomain] = useState('general');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -31,18 +31,8 @@ const Dashboard = () => {
       toast({ title: "Failed to create session", description: "Please try again.", variant: "destructive" });
     }
     setNewConversationTitle('');
-    setSelectedDomain('backend');
+    setSelectedDomain('general');
     setIsCreateDialogOpen(false);
-  };
-
-  const handleDeleteConversation = async (id: string) => {
-    const ok = await deleteConversation(id);
-    if (ok) {
-      toast({ title: "Session deleted", description: "The session has been removed." });
-      refetch();
-    } else {
-      toast({ title: "Failed to delete session", description: "Please try again.", variant: "destructive" });
-    }
   };
 
   const handleLogout = () => {
@@ -130,6 +120,7 @@ const Dashboard = () => {
                         <SelectValue placeholder="Select interview domain" />
                       </SelectTrigger>
                       <SelectContent>
+                        {/* Technology & Engineering */}
                         <SelectItem value="backend">Backend Development</SelectItem>
                         <SelectItem value="frontend">Frontend Development</SelectItem>
                         <SelectItem value="fullstack">Full Stack Development</SelectItem>
@@ -137,9 +128,57 @@ const Dashboard = () => {
                         <SelectItem value="devops">DevOps Engineering</SelectItem>
                         <SelectItem value="data">Data Science/Engineering</SelectItem>
                         <SelectItem value="ml">Machine Learning</SelectItem>
+                        <SelectItem value="cybersecurity">Cybersecurity</SelectItem>
+                        <SelectItem value="qa">Quality Assurance</SelectItem>
+                        
+                        {/* Business & Management */}
                         <SelectItem value="product">Product Management</SelectItem>
+                        <SelectItem value="projectmanagement">Project Management</SelectItem>
+                        <SelectItem value="consulting">Management Consulting</SelectItem>
+                        <SelectItem value="business">Business Analysis</SelectItem>
+                        <SelectItem value="strategy">Business Strategy</SelectItem>
+                        
+                        {/* Design & Creative */}
                         <SelectItem value="design">UI/UX Design</SelectItem>
-                        <SelectItem value="general">General Software Engineering</SelectItem>
+                        <SelectItem value="graphic">Graphic Design</SelectItem>
+                        <SelectItem value="creative">Creative Director</SelectItem>
+                        
+                        {/* Sales & Marketing */}
+                        <SelectItem value="sales">Sales</SelectItem>
+                        <SelectItem value="marketing">Digital Marketing</SelectItem>
+                        <SelectItem value="content">Content Marketing</SelectItem>
+                        <SelectItem value="social">Social Media Marketing</SelectItem>
+                        
+                        {/* Finance & Operations */}
+                        <SelectItem value="finance">Finance</SelectItem>
+                        <SelectItem value="accounting">Accounting</SelectItem>
+                        <SelectItem value="operations">Operations</SelectItem>
+                        <SelectItem value="supply">Supply Chain</SelectItem>
+                        
+                        {/* Healthcare & Science */}
+                        <SelectItem value="healthcare">Healthcare</SelectItem>
+                        <SelectItem value="nursing">Nursing</SelectItem>
+                        <SelectItem value="research">Research</SelectItem>
+                        <SelectItem value="biotechnology">Biotechnology</SelectItem>
+                        
+                        {/* Education & HR */}
+                        <SelectItem value="education">Education/Teaching</SelectItem>
+                        <SelectItem value="hr">Human Resources</SelectItem>
+                        <SelectItem value="training">Training & Development</SelectItem>
+                        
+                        {/* Legal & Compliance */}
+                        <SelectItem value="legal">Legal</SelectItem>
+                        <SelectItem value="compliance">Compliance</SelectItem>
+                        
+                        {/* Customer Service */}
+                        <SelectItem value="customer">Customer Service</SelectItem>
+                        <SelectItem value="support">Technical Support</SelectItem>
+                        
+                        {/* General */}
+                        <SelectItem value="general">General Interview</SelectItem>
+                        <SelectItem value="leadership">Leadership Position</SelectItem>
+                        <SelectItem value="internship">Internship</SelectItem>
+                        <SelectItem value="entry">Entry Level</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -217,12 +256,10 @@ const Dashboard = () => {
                 {conversations.map((conversation) => (
                   <Card 
                     key={conversation.id} 
-                    className="bg-gradient-glass backdrop-blur-sm border-white/20"
+                    className="cursor-pointer hover:shadow-elegant transition-smooth transform hover:scale-[1.02] bg-gradient-glass backdrop-blur-sm border-white/20"
+                    onClick={() => navigate(`/chat/${conversation.id}`)}
                   >
-                    <CardHeader 
-                      className="cursor-pointer"
-                      onClick={() => navigate(`/chat/${conversation.id}`)}
-                    >
+                    <CardHeader>
                       <CardTitle className="truncate">{conversation.title}</CardTitle>
                       <CardDescription>
                         Created {new Date(conversation.created_at).toLocaleDateString()}
@@ -231,16 +268,7 @@ const Dashboard = () => {
                     <CardContent>
                       <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span>{conversation.message_count || 0} messages</span>
-                        <div className="flex items-center gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleDeleteConversation(conversation.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                          <span className="cursor-pointer text-primary">Continue →</span>
-                        </div>
+                        <span>Continue →</span>
                       </div>
                     </CardContent>
                   </Card>

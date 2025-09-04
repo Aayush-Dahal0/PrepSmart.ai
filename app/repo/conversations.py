@@ -15,8 +15,8 @@ async def list_conversations(user_id: str):
             "id": str(r["id"]),
             "title": r["title"],
             "domain": r["domain"],
-            "timestamp": r["created_at"],      
-            "last_updated": r["updated_at"], 
+            "timestamp": r["created_at"],
+            "last_updated": r["updated_at"],
         }
         for r in rows
     ]
@@ -39,16 +39,16 @@ async def create_conversation(user_id: str, title: str, domain: str):
 async def delete_conversation(user_id: str, conv_id: str):
     pool = await get_pool()
     try:
-        conv_id = uuid.UUID(conv_id)  # ensure valid UUID
+        conv_id = uuid.UUID(conv_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid conversation ID")
 
     result = await pool.execute("""
-        DELETE FROM conversations
-        WHERE id = $1 AND user_id = $2
+        delete from conversations
+        where id = $1 and user_id = $2
     """, conv_id, user_id)
 
     if result == "DELETE 0":
         raise HTTPException(status_code=404, detail="Conversation not found or not owned by user")
 
-    return {"status": "success", "id": str(conv_id)}  # 
+    return {"status": "success", "id": str(conv_id)}

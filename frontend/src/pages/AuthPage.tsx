@@ -11,9 +11,11 @@ import { BrainCircuit, Briefcase, Users, ChevronRight } from 'lucide-react';
 
 const AuthPage = () => {
   const [loginData, setLoginData] = useState({ email: '', password: '' });
-  const [registerData, setRegisterData] = useState({ email: '', password: '', name: '' });
+  const [registerData, setRegisterData] = useState({ email: '', password: '', confirmPassword: '', name: '' });
   const [loading, setLoading] = useState(false);
-  const { login, register } = useAuth();
+  const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const { login, register, forgotPassword } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -21,12 +23,16 @@ const AuthPage = () => {
     e.preventDefault();
     setLoading(true);
     
-    const success = await login(loginData.email, loginData.password);
-    if (success) {
+    try {
+      await login(loginData.email, loginData.password);
       toast({ title: "Welcome back!", description: "Successfully logged in." });
       navigate('/dashboard');
-    } else {
-      toast({ title: "Login failed", description: "Please check your credentials.", variant: "destructive" });
+    } catch (error) {
+      toast({ 
+        title: "Login failed", 
+        description: error instanceof Error ? error.message : "Please check your credentials.", 
+        variant: "destructive" 
+      });
     }
     setLoading(false);
   };
@@ -35,12 +41,54 @@ const AuthPage = () => {
     e.preventDefault();
     setLoading(true);
     
-    const success = await register(registerData.email, registerData.password, registerData.name);
-    if (success) {
-      toast({ title: "Account created!", description: "Welcome to PrepSmart." });
-      navigate('/dashboard');
-    } else {
-      toast({ title: "Registration failed", description: "Please try again.", variant: "destructive" });
+    // Validate password confirmation
+    if (registerData.password !== registerData.confirmPassword) {
+      toast({ 
+        title: "Password mismatch", 
+        description: "Passwords do not match. Please try again.", 
+        variant: "destructive" 
+      });
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      await register(registerData.email, registerData.password, registerData.name);
+      toast({ 
+        title: "Check your email!", 
+        description: "We've sent you a verification link. Please verify your email before signing in.",
+        variant: "default"
+      });
+      // Don't navigate to dashboard - wait for email verification
+    } catch (error) {
+      toast({ 
+        title: "Registration failed", 
+        description: error instanceof Error ? error.message : "Please try again.", 
+        variant: "destructive" 
+      });
+    }
+    setLoading(false);
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      await forgotPassword(resetEmail);
+      toast({ 
+        title: "Reset link sent!", 
+        description: "Check your email for password reset instructions.",
+        variant: "default"
+      });
+      setForgotPasswordMode(false);
+      setResetEmail('');
+    } catch (error) {
+      toast({ 
+        title: "Reset failed", 
+        description: error instanceof Error ? error.message : "Please try again.", 
+        variant: "destructive" 
+      });
     }
     setLoading(false);
   };
@@ -100,38 +148,81 @@ const AuthPage = () => {
               </TabsList>
 
               <TabsContent value="login" className="space-y-4">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="Enter your email"
-                      value={loginData.email}
-                      onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
-                    <Input
-                      id="login-password"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={loginData.password}
-                      onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    variant="gradient" 
-                    disabled={loading}
-                  >
-                    {loading ? 'Signing in...' : 'Sign In'}
-                  </Button>
-                </form>
+                {!forgotPasswordMode ? (
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="login-email">Email</Label>
+                      <Input
+                        id="login-email"
+                        type="email"
+                        placeholder="Enter your email"
+                        value={loginData.email}
+                        onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="login-password">Password</Label>
+                      <Input
+                        id="login-password"
+                        type="password"
+                        placeholder="Enter your password"
+                        value={loginData.password}
+                        onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      variant="gradient" 
+                      disabled={loading}
+                    >
+                      {loading ? 'Signing in...' : 'Sign In'}
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      className="w-full text-sm"
+                      onClick={() => setForgotPasswordMode(true)}
+                    >
+                      Forgot your password?
+                    </Button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-email">Email</Label>
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        placeholder="Enter your email"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      variant="gradient" 
+                      disabled={loading}
+                    >
+                      {loading ? 'Sending reset link...' : 'Send Reset Link'}
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      className="w-full text-sm"
+                      onClick={() => {
+                        setForgotPasswordMode(false);
+                        setResetEmail('');
+                      }}
+                    >
+                      Back to sign in
+                    </Button>
+                  </form>
+                )}
               </TabsContent>
 
               <TabsContent value="register" className="space-y-4">
@@ -164,6 +255,17 @@ const AuthPage = () => {
                       placeholder="Create a password"
                       value={registerData.password}
                       onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                    <Input
+                      id="confirm-password"
+                      type="password"
+                      placeholder="Confirm your password"
+                      value={registerData.confirmPassword}
+                      onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
                       required
                     />
                   </div>

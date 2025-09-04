@@ -9,8 +9,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from .config import settings
 from .db import get_pool, close_pool
-from .deps import get_current_user_id
-from .auth import router as auth_router
+from .auth_supabase import verify_token  # <-- now uses JWKS
 from .repo import conversations as conv_repo, messages as msg_repo
 from .services.chat import stream_ollama, SYSTEM_PROMPT  # <-- Ollama
 
@@ -45,9 +44,6 @@ async def _shutdown():
 async def health():
     return {"ok": True}
 
-# ---------------- Auth ----------------
-app.include_router(auth_router)
-
 # ---------------- Conversations ----------------
 class CreateConvIn(BaseModel):
     title: str = "New Interview"
@@ -55,26 +51,39 @@ class CreateConvIn(BaseModel):
 
 @app.get("/conversations")
 @limiter.limit("120/minute")
-async def list_conversations(request: Request, user_id: str = Depends(get_current_user_id)):
+async def list_conversations(
+    request: Request,
+    user_id: str = Depends(verify_token)  # ✅ Supabase user
+):
     return await conv_repo.list_conversations(user_id)
 
 @app.post("/conversations")
 @limiter.limit("60/minute")
-async def create_conversation(request: Request, body: CreateConvIn, user_id: str = Depends(get_current_user_id)):
-    conv_id = await conv_repo.create_conversation(user_id, body.title, body.domain)
-    return {"id": conv_id}
+async def create_conversation(
+    request: Request,
+    body: CreateConvIn,
+    user_id: str = Depends(verify_token)
+):
+    return await conv_repo.create_conversation(user_id, body.title, body.domain)
 
 @app.delete("/conversations/{conv_id}")
 @limiter.limit("60/minute")
-async def delete_conversation(request: Request, conv_id: str, user_id: str = Depends(get_current_user_id)):
+async def delete_conversation(
+    request: Request,
+    conv_id: str,
+    user_id: str = Depends(verify_token)
+):
     await conv_repo.delete_conversation(user_id, conv_id)
     return {"ok": True}
 
 # ---------------- Messages ----------------
 @app.get("/messages/{conv_id}")
 @limiter.limit("120/minute")
-async def list_messages(request: Request, conv_id: str, user_id: str = Depends(get_current_user_id)):
-    # Optional: verify conversation belongs to user
+async def list_messages(
+    request: Request,
+    conv_id: str,
+    user_id: str = Depends(verify_token)
+):
     return await msg_repo.list_messages(conv_id)
 
 # ---------------- Chat (SSE streaming) ----------------
@@ -84,9 +93,12 @@ class ChatIn(BaseModel):
 
 @app.post("/chat/stream")
 @limiter.limit("30/minute")
-async def chat_stream(request: Request, payload: ChatIn, user_id: str = Depends(get_current_user_id)):
+async def chat_stream(
+    request: Request,
+    payload: ChatIn,
+    user_id: str = Depends(verify_token)
+):
     conv_id = payload.conversation_id
-    # Load last N messages for context
     history = await msg_repo.list_messages(conv_id, limit=50)
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -94,7 +106,6 @@ async def chat_stream(request: Request, payload: ChatIn, user_id: str = Depends(
         messages.append({"role": m["role"], "content": m["content"]})
     messages.append({"role": "user", "content": payload.user_message})
 
-    # Save user message immediately
     await msg_repo.add_message(conv_id, "user", payload.user_message)
 
     async def event_gen():
@@ -105,7 +116,6 @@ async def chat_stream(request: Request, payload: ChatIn, user_id: str = Depends(
             yield f"data: {chunk}\n\n"
             if await request.is_disconnected():
                 break
-        # Save assistant message when done
         await msg_repo.add_message(conv_id, "assistant", buffer, latency_ms=int((time.time() - start) * 1000))
         yield "data: [DONE]\n\n"
 

@@ -1,13 +1,23 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL = process.env.NODE_ENV === 'development' ? 'http://127.0.0.1:8000' : 'http://127.0.0.1:8000';
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('auth_token');
-  return {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
-  };
+// Utility function to get auth headers
+const getAuthHeaders = async () => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('Session:', session); // Debug log
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` }),
+    };
+    console.log('Headers:', headers); // Debug log
+    return headers;
+  } catch (error) {
+    console.error('Error getting auth headers:', error);
+    return { 'Content-Type': 'application/json' };
+  }
 };
 
 export interface Conversation {
@@ -30,12 +40,13 @@ export const useConversations = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchConversations = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/conversations`, {
-        headers: getAuthHeaders(),
-      });
+    const fetchConversations = async () => {
+      try {
+        setLoading(true);
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_BASE_URL}/conversations`, {
+          headers,
+        });
 
       if (response.ok) {
         const data = await response.json();
@@ -57,9 +68,10 @@ export const useConversations = () => {
     domain: string // ✅ domain is now required
   ): Promise<string | null> => {
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`${API_BASE_URL}/conversations`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers,
         body: JSON.stringify({ title, domain }), // ✅ backend expects this
       });
 
@@ -76,9 +88,10 @@ export const useConversations = () => {
 
   const deleteConversation = async (id: string): Promise<boolean> => {
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`${API_BASE_URL}/conversations/${id}`, {
         method: 'DELETE',
-        headers: getAuthHeaders(),
+        headers,
       });
 
       if (response.ok) {
@@ -105,8 +118,9 @@ export const useMessages = (chatId: string) => {
     const fetchMessages = async () => {
       try {
         setLoading(true);
+        const headers = await getAuthHeaders();
         const response = await fetch(`${API_BASE_URL}/messages/${chatId}`, {
-          headers: getAuthHeaders(),
+          headers,
         });
 
         if (response.ok) {
@@ -138,9 +152,10 @@ export const sendChatMessage = async (
   onChunk?: (chunk: string) => void
 ): Promise<boolean> => {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/chat/stream`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers,
       body: JSON.stringify({
         conversation_id: chatId,
         user_message: message,

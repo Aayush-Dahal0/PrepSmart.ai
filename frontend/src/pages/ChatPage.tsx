@@ -70,16 +70,21 @@ const ChatPage = () => {
       (chunk) => {
         fullResponse += chunk;
         setStreamingMessage(fullResponse);
-        // Update the assistant message in real-time
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === assistantMessageId 
-              ? { ...msg, content: fullResponse }
-              : msg
-          )
-        );
+        // Don't update message content during streaming to prevent 
+        // FormattedMessage from parsing incomplete content
       }
     );
+
+    // After streaming completes, ensure the final message is properly saved with timestamp
+    if (success && fullResponse) {
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === assistantMessageId 
+            ? { ...msg, content: fullResponse, timestamp: new Date().toISOString() }
+            : msg
+        )
+      );
+    }
 
     if (!success) {
       // Remove the failed message and show error
@@ -181,7 +186,24 @@ const ChatPage = () => {
                       }`}
                     >
                       {message.role === 'assistant' ? (
-                        <FormattedMessage content={message.content || "I'm thinking..."} />
+                        message.content ? (
+                          <FormattedMessage content={message.content} />
+                        ) : isLoading && streamingMessage ? (
+                          <div className="space-y-2">
+                            <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                              {streamingMessage}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
+                              <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                              Typing...
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                            I'm thinking...
+                          </div>
+                        )
                       ) : (
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 mb-2">

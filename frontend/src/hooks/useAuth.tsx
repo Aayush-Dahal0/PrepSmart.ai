@@ -1,21 +1,27 @@
-import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
 
+// User interface
 interface User {
   id: string;
   email: string;
   name?: string;
 }
 
+// Auth context interface
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string, name?: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, name: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
 
+// Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Hook to use auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -24,112 +30,151 @@ export const useAuth = () => {
   return context;
 };
 
-// API base URL - users can update this to match their backend
-const API_BASE_URL = 'http://127.0.0.1:8000';
+// Helper: strong password validator
+const isStrongPassword = (password: string): boolean => {
+  // At least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+  const strongPasswordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+=<>?{}[\]~])[A-Za-z\d!@#$%^&*()_\-+=<>?{}[\]~]{8,}$/;
+  return strongPasswordRegex.test(password);
+};
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+// Auth provider component
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Initialize auth state on component mount
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    const userData = localStorage.getItem('user_data');
-
-    if (token && userData) {
+    const initAuth = async () => {
       try {
-        setUser(JSON.parse(userData));
+        // Get initial session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email!,
+            name: session.user.user_metadata?.name,
+          });
+        }
       } catch (error) {
-        console.error('Failed to parse stored user data:', error);
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user_data');
+        console.error('Auth initialization error:', error);
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+
+    initAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email!,
+            name: session.user.user_metadata?.name,
+          });
+        } else {
+          setUser(null);
+        }
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  // Login function
+  const login = async (email: string, password: string): Promise<void> => {
     try {
-      setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log("🔑 Login response:", data);
-
-        const token = data.access; // ✅ your backend returns "access"
-        if (!token) {
-          console.error("No access token in login response");
-          return false;
-        }
-
-        const userData = data.user
-          ? { id: data.user.id, email: data.user.email, name: data.user.name }
-          : { id: data.user_id || data.id || "unknown", email, name: data.name };
-
-        localStorage.setItem('auth_token', token);
-        localStorage.setItem('user_data', JSON.stringify(userData));
-        setUser(userData);
-        return true;
+      if (error) {
+        throw new Error(error.message);
       }
-      return false;
+
+      if (data.user) {
+        setUser({
+          id: data.user.id,
+          email: data.user.email!,
+          name: data.user.user_metadata?.name,
+        });
+      }
     } catch (error) {
       console.error('Login error:', error);
-      return false;
-    } finally {
-      setLoading(false);
+      throw error;
     }
   };
 
-  const register = async (email: string, password: string, name?: string): Promise<boolean> => {
+  // Register function
+  const register = async (email: string, password: string, name: string): Promise<void> => {
     try {
-      setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name }),
+      // 🔒 Strong password enforcement
+      if (!isStrongPassword(password)) {
+        throw new Error(
+          "Password must be at least 8 characters long and include an uppercase letter, " +
+          "a lowercase letter, a number, and a special character."
+        );
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          },
+        },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log("📝 Register response:", data);
-
-        const token = data.access; // ✅ same fix here
-        if (!token) {
-          console.error("No access token in register response");
-          return false;
-        }
-
-        const userData = data.user
-          ? { id: data.user.id, email: data.user.email, name: data.user.name }
-          : { id: data.user_id || data.id || "unknown", email, name: name || data.name };
-
-        localStorage.setItem('auth_token', token);
-        localStorage.setItem('user_data', JSON.stringify(userData));
-        setUser(userData);
-        return true;
+      if (error) {
+        throw new Error(error.message);
       }
-      return false;
+
+      // Don't set user immediately - wait for email verification
+      // User will be set when they verify email and sign in
     } catch (error) {
       console.error('Registration error:', error);
-      return false;
-    } finally {
-      setLoading(false);
+      throw error;
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_data');
+  // Forgot password function
+  const forgotPassword = async (email: string): Promise<void> => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      throw error;
+    }
+  };
+
+  // Logout function
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{
+      user,
+      login,
+      register,
+      forgotPassword,
+      logout,
+      loading
+    }}>
       {children}
     </AuthContext.Provider>
   );
-}
+};
