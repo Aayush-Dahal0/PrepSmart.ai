@@ -9,7 +9,10 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversations } from '@/hooks/useApi';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, MessageSquare, Calendar, User, LogOut, BrainCircuit } from 'lucide-react';
+import { Plus, MessageSquare, Calendar, User, LogOut, BrainCircuit, Settings, BarChart3 } from 'lucide-react';
+import ProfileDialog from '@/components/ProfileDialog';
+import SessionManagementDialog from '@/components/SessionManagementDialog';
+import ProgressCard from '@/components/ProgressCard';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -17,6 +20,8 @@ const Dashboard = () => {
   const [newConversationTitle, setNewConversationTitle] = useState('');
   const [selectedDomain, setSelectedDomain] = useState('general');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+  const [isSessionManagementOpen, setIsSessionManagementOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -58,6 +63,10 @@ const Dashboard = () => {
                 <User className="h-4 w-4" />
                 <span>{user?.name || user?.email}</span>
               </div>
+              <Button variant="ghost" size="sm" onClick={() => setIsProfileDialogOpen(true)}>
+                <Settings className="h-4 w-4" />
+                Profile
+              </Button>
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
                 Sign Out
@@ -80,7 +89,7 @@ const Dashboard = () => {
           </div>
 
           {/* Quick Actions */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Card className="cursor-pointer hover:shadow-elegant transition-smooth transform hover:scale-[1.02] bg-gradient-glass backdrop-blur-sm border-white/20">
@@ -194,13 +203,16 @@ const Dashboard = () => {
               </DialogContent>
             </Dialog>
 
-            <Card className="bg-gradient-glass backdrop-blur-sm border-white/20">
+            <Card 
+              className="cursor-pointer hover:shadow-elegant transition-smooth transform hover:scale-[1.02] bg-gradient-glass backdrop-blur-sm border-white/20"
+              onClick={() => setIsSessionManagementOpen(true)}
+            >
               <CardHeader className="text-center pb-2">
                 <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-2">
                   <MessageSquare className="h-6 w-6 text-primary" />
                 </div>
                 <CardTitle>{conversations.length}</CardTitle>
-                <CardDescription>Total Sessions</CardDescription>
+                <CardDescription>Manage Sessions</CardDescription>
               </CardHeader>
             </Card>
 
@@ -218,10 +230,105 @@ const Dashboard = () => {
                 <CardDescription>Sessions Today</CardDescription>
               </CardHeader>
             </Card>
+
+            <Card className="bg-gradient-glass backdrop-blur-sm border-white/20">
+              <CardHeader className="text-center pb-2">
+                <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+                  <BarChart3 className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle>
+                  {conversations.reduce((sum, c) => sum + (c.message_count || 0), 0)}
+                </CardTitle>
+                <CardDescription>Total Questions</CardDescription>
+              </CardHeader>
+            </Card>
           </div>
 
-          {/* Recent Sessions */}
-          <div className="space-y-6">
+          {/* Progress Analytics */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-2xl font-semibold">Recent Sessions</h3>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsSessionManagementOpen(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Manage All
+                  </Button>
+                </div>
+
+                {loading ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {[1, 2, 3, 4].map((i) => (
+                      <Card key={i} className="animate-pulse">
+                        <CardHeader>
+                          <div className="h-4 bg-muted rounded w-3/4"></div>
+                          <div className="h-3 bg-muted rounded w-1/2"></div>
+                        </CardHeader>
+                      </Card>
+                    ))}
+                  </div>
+                ) : conversations.length === 0 ? (
+                  <Card className="text-center py-12 bg-gradient-glass backdrop-blur-sm border-white/20">
+                    <CardContent>
+                      <MessageSquare className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+                      <h4 className="text-lg font-semibold mb-2">No sessions yet</h4>
+                      <p className="text-muted-foreground mb-4">
+                        Create your first interview practice session to get started!
+                      </p>
+                      <Button variant="gradient" onClick={() => setIsCreateDialogOpen(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Session
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {conversations.slice(0, 4).map((conversation) => (
+                      <Card 
+                        key={conversation.id} 
+                        className="cursor-pointer hover:shadow-elegant transition-smooth transform hover:scale-[1.02] bg-gradient-glass backdrop-blur-sm border-white/20"
+                        onClick={() => navigate(`/chat/${conversation.id}`)}
+                      >
+                        <CardHeader>
+                          <CardTitle className="truncate">{conversation.title}</CardTitle>
+                          <CardDescription>
+                            {(() => {
+                              const date = new Date(conversation.created_at);
+                              if (isNaN(date.getTime())) {
+                                return 'Recent session';
+                              }
+                              return `Created ${date.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}`;
+                            })()}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex items-center justify-between text-sm text-muted-foreground">
+                            <span>{conversation.message_count || 0} messages</span>
+                            <span>Continue →</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div>
+              <ProgressCard />
+            </div>
+          </div>
+
+          {/* Recent Sessions (old section, replace this) */}
+          <div className="space-y-6 hidden">
             <div className="flex items-center justify-between">
               <h3 className="text-2xl font-semibold">Recent Sessions</h3>
             </div>
@@ -278,6 +385,16 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Dialogs */}
+      <ProfileDialog 
+        open={isProfileDialogOpen} 
+        onOpenChange={setIsProfileDialogOpen} 
+      />
+      <SessionManagementDialog 
+        open={isSessionManagementOpen} 
+        onOpenChange={setIsSessionManagementOpen} 
+      />
     </div>
   );
 };

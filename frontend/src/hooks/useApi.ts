@@ -112,37 +112,37 @@ export const useMessages = (chatId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchMessages = async () => {
     if (!chatId) return;
+    
+    try {
+      setLoading(true);
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_BASE_URL}/messages/${chatId}`, {
+        headers,
+      });
 
-    const fetchMessages = async () => {
-      try {
-        setLoading(true);
-        const headers = await getAuthHeaders();
-        const response = await fetch(`${API_BASE_URL}/messages/${chatId}`, {
-          headers,
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          // Ensure timestamps are properly handled from backend
-          const messagesWithTimestamps = data.map((msg: Message) => ({
-            ...msg,
-            timestamp: msg.timestamp || new Date().toISOString()
-          }));
-          setMessages(messagesWithTimestamps);
-        }
-      } catch (error) {
-        console.error('Failed to fetch messages:', error);
-      } finally {
-        setLoading(false);
+      if (response.ok) {
+        const data = await response.json();
+        // Ensure timestamps are properly handled from backend
+        const messagesWithTimestamps = data.map((msg: Message) => ({
+          ...msg,
+          timestamp: msg.timestamp || new Date().toISOString()
+        }));
+        setMessages(messagesWithTimestamps);
       }
-    };
+    } catch (error) {
+      console.error('Failed to fetch messages:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchMessages();
   }, [chatId]);
 
-  return { messages, loading, setMessages };
+  return { messages, loading, setMessages, refetch: fetchMessages };
 };
 
 // ------------------- Chat Streaming -------------------
@@ -187,7 +187,17 @@ export const sendChatMessage = async (
               if (trimmedLine.startsWith('data: ') && trimmedLine !== 'data: [DONE]') {
                 const content = trimmedLine.substring(6);
                 if (content.trim()) {
-                  onChunk(content);
+                  try {
+                    // Parse the JSON content from the streaming response
+                    const chunkData = JSON.parse(content);
+                    // Extract just the content field for the UI
+                    if (chunkData.content) {
+                      onChunk(chunkData.content);
+                    }
+                  } catch (e) {
+                    // Fallback to raw content if not JSON
+                    onChunk(content);
+                  }
                 }
               }
             }
@@ -195,15 +205,25 @@ export const sendChatMessage = async (
           
           if (done) {
             // Process any remaining data in buffer
-            if (buffer.trim()) {
-              const trimmedBuffer = buffer.trim();
-              if (trimmedBuffer.startsWith('data: ') && trimmedBuffer !== 'data: [DONE]') {
-                const content = trimmedBuffer.substring(6);
-                if (content.trim()) {
-                  onChunk(content);
+              if (buffer.trim()) {
+                const trimmedBuffer = buffer.trim();
+                if (trimmedBuffer.startsWith('data: ') && trimmedBuffer !== 'data: [DONE]') {
+                  const content = trimmedBuffer.substring(6);
+                  if (content.trim()) {
+                    try {
+                      // Parse the JSON content from the streaming response
+                      const chunkData = JSON.parse(content);
+                      // Extract just the content field for the UI
+                      if (chunkData.content) {
+                        onChunk(chunkData.content);
+                      }
+                    } catch (e) {
+                      // Fallback to raw content if not JSON
+                      onChunk(content);
+                    }
+                  }
                 }
               }
-            }
             break;
           }
         }

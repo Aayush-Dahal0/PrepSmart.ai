@@ -1,4 +1,4 @@
-import time, asyncio
+import time, asyncio, json
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, ORJSONResponse
@@ -111,12 +111,36 @@ async def chat_stream(
     async def event_gen():
         start = time.time()
         buffer = ""
+
         async for chunk in stream_ollama(messages):
-            buffer += chunk
-            yield f"data: {chunk}\n\n"
+            if isinstance(chunk, dict):
+                text = chunk.get("content", "")
+            else:
+                text = str(chunk)
+
+            buffer += text
+
+            # ✅ Stream structured JSON like messages.py
+            event = {
+                "role": "assistant",
+                "content": text,
+                "timestamp": time.time(),
+            }
+            yield f"data: {json.dumps(event)}\n\n"
+
             if await request.is_disconnected():
                 break
-        await msg_repo.add_message(conv_id, "assistant", buffer, latency_ms=int((time.time() - start) * 1000))
+
+        # Save final message in DB
+        saved = await msg_repo.add_message(
+            conv_id,
+            "assistant",
+            buffer,
+            latency_ms=int((time.time() - start) * 1000),
+        )
+
+        # ✅ Send final structured message
+        yield f"data: {json.dumps(saved)}\n\n"
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_gen(), media_type="text/event-stream")

@@ -19,7 +19,7 @@ const ChatPage = () => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { messages, loading, setMessages } = useMessages(chatId || '');
+  const { messages, loading, setMessages, refetch } = useMessages(chatId || '');
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
@@ -75,7 +75,7 @@ const ChatPage = () => {
       }
     );
 
-    // After streaming completes, ensure the final message is properly saved with timestamp
+    // After streaming completes, ensure the final message is properly saved
     if (success && fullResponse) {
       setMessages(prev => 
         prev.map(msg => 
@@ -84,6 +84,13 @@ const ChatPage = () => {
             : msg
         )
       );
+      
+      // Refetch messages to sync with backend after streaming completes
+      setTimeout(async () => {
+        if (refetch) {
+          await refetch();
+        }
+      }, 1500);
     }
 
     if (!success) {
