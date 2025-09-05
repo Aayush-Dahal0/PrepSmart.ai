@@ -197,9 +197,7 @@ const ChatPage = () => {
                           <FormattedMessage content={message.content} />
                         ) : isLoading && streamingMessage ? (
                           <div className="space-y-2">
-                            <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                              {streamingMessage}
-                            </div>
+                            <FormattedMessage content={streamingMessage} />
                             <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
                               <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
                               Typing...
