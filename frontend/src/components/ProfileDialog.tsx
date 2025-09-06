@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { updateUserProfile, changeUserPassword } from '@/hooks/useApi';
 import { User, Mail, Shield, Lock, Settings } from 'lucide-react';
 
 interface ProfileDialogProps {
@@ -18,6 +19,10 @@ const ProfileDialog: React.FC<ProfileDialogProps> = ({ open, onOpenChange }) => 
   const { toast } = useToast();
   const [name, setName] = useState(user?.name || '');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -31,15 +36,17 @@ const ProfileDialog: React.FC<ProfileDialogProps> = ({ open, onOpenChange }) => 
 
     setIsUpdating(true);
     try {
-      // TODO: When Supabase is connected, update user profile here
-      // For now, simulate the update
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const success = await updateUserProfile(name.trim());
       
-      toast({
-        title: "Profile updated!",
-        description: "Your profile changes have been saved.",
-      });
-      onOpenChange(false);
+      if (success) {
+        toast({
+          title: "Profile updated!",
+          description: "Your profile changes have been saved.",
+        });
+        onOpenChange(false);
+      } else {
+        throw new Error("Update failed");
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -52,10 +59,63 @@ const ProfileDialog: React.FC<ProfileDialogProps> = ({ open, onOpenChange }) => 
   };
 
   const handleChangePassword = () => {
-    toast({
-      title: "Password Change",
-      description: "Password change functionality will be available when connected to Supabase.",
-    });
+    setShowPasswordChange(true);
+  };
+
+  const handlePasswordUpdate = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Please fill in all password fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "New passwords do not match.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "New password must be at least 6 characters long.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const success = await changeUserPassword(currentPassword, newPassword);
+      
+      if (success) {
+        toast({
+          title: "Password Updated",
+          description: "Your password has been changed successfully."
+        });
+        setShowPasswordChange(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to change password. Please check your current password.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to change password. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -98,14 +158,58 @@ const ProfileDialog: React.FC<ProfileDialogProps> = ({ open, onOpenChange }) => 
           <div className="space-y-2">
             <Label>Account Security</Label>
             <div className="space-y-2">
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={handleChangePassword}
-              >
-                <Lock className="h-4 w-4 mr-2" />
-                Change Password
-              </Button>
+              {!showPasswordChange ? (
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={handleChangePassword}
+                >
+                  <Lock className="h-4 w-4 mr-2" />
+                  Change Password
+                </Button>
+              ) : (
+                  <div className="space-y-3 p-3 border rounded-lg">
+                    <div className="space-y-2">
+                      <Label>Current Password</Label>
+                      <Input 
+                        type="password" 
+                        placeholder="Enter current password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>New Password</Label>
+                      <Input 
+                        type="password" 
+                        placeholder="Enter new password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Confirm New Password</Label>
+                      <Input 
+                        type="password" 
+                        placeholder="Confirm new password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="outline" size="sm" onClick={() => setShowPasswordChange(false)}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        variant="gradient"
+                        size="sm"
+                        onClick={handlePasswordUpdate}
+                      >
+                        Update
+                      </Button>
+                    </div>
+                  </div>
+              )}
               
               <AlertDialog>
                 <AlertDialogTrigger asChild>

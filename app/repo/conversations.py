@@ -52,3 +52,21 @@ async def delete_conversation(user_id: str, conv_id: str):
         raise HTTPException(status_code=404, detail="Conversation not found or not owned by user")
 
     return {"status": "success", "id": str(conv_id)}
+
+async def update_conversation_title(user_id: str, conv_id: str, new_title: str) -> bool:
+    pool = await get_pool()
+    try:
+        conv_id = uuid.UUID(conv_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid conversation ID")
+
+    result = await pool.execute("""
+        update conversations
+        set title = $1, updated_at = now()
+        where id = $2 and user_id = $3
+    """, new_title, conv_id, user_id)
+
+    if result == "UPDATE 0":
+        raise HTTPException(status_code=404, detail="Conversation not found or not owned by user")
+
+    return True

@@ -75,8 +75,9 @@ const ChatPage = () => {
       }
     );
 
-    // After streaming completes, ensure the final message is properly saved
+    // After streaming completes, update the message immediately and sync with backend
     if (success && fullResponse) {
+      // Update message immediately
       setMessages(prev => 
         prev.map(msg => 
           msg.id === assistantMessageId 
@@ -85,12 +86,19 @@ const ChatPage = () => {
         )
       );
       
-      // Refetch messages to sync with backend after streaming completes
+      // Clear streaming state
+      setStreamingMessage('');
+      
+      // Refetch messages from backend to ensure sync (shorter delay)
       setTimeout(async () => {
-        if (refetch) {
-          await refetch();
+        try {
+          if (refetch) {
+            await refetch();
+          }
+        } catch (error) {
+          console.warn('Failed to refetch messages:', error);
         }
-      }, 1500);
+      }, 500);
     }
 
     if (!success) {
@@ -101,7 +109,11 @@ const ChatPage = () => {
 
     setIsLoading(false);
     setStreamingMessage('');
-    inputRef.current?.focus();
+    
+    // Focus input after a small delay to ensure UI updates
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -197,7 +209,9 @@ const ChatPage = () => {
                           <FormattedMessage content={message.content} />
                         ) : isLoading && streamingMessage ? (
                           <div className="space-y-2">
-                            <FormattedMessage content={streamingMessage} />
+                            <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                              {streamingMessage}
+                            </div>
                             <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
                               <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
                               Typing...

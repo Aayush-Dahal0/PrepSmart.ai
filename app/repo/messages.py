@@ -15,7 +15,8 @@ async def list_messages(conv_id: str, limit: int = 200):
             "id": str(r["id"]),
             "role": r["role"],
             "content": r["content"],
-            "timestamp": r["created_at"],   # ✅ normalized
+            # ✅ Always return as ISO string
+            "timestamp": r["created_at"].isoformat() if r["created_at"] else None,
         }
         for r in rows
     ]
@@ -39,5 +40,6 @@ async def add_message(
         "id": str(row["id"]),
         "role": row["role"],
         "content": row["content"],
-        "timestamp": row["created_at"],   
+        # ✅ Convert to string immediately
+        "timestamp": row["created_at"].isoformat() if row["created_at"] else None,
     }

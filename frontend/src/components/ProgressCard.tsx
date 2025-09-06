@@ -16,13 +16,15 @@ const ProgressCard = () => {
   const week = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
   const month = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
   
-  const sessionsThisWeek = conversations.filter(conv => 
-    new Date(conv.created_at) >= week
-  ).length;
+  const sessionsThisWeek = conversations.filter(conv => {
+    const convDate = new Date(conv.created_at);
+    return !isNaN(convDate.getTime()) && convDate >= week;
+  }).length;
   
-  const sessionsThisMonth = conversations.filter(conv => 
-    new Date(conv.created_at) >= month
-  ).length;
+  const sessionsThisMonth = conversations.filter(conv => {
+    const convDate = new Date(conv.created_at);
+    return !isNaN(convDate.getTime()) && convDate >= month;
+  }).length;
 
   const weeklyProgress = Math.min((sessionsThisWeek / 3) * 100, 100); // Goal: 3 sessions per week
   const monthlyProgress = Math.min((sessionsThisMonth / 10) * 100, 100); // Goal: 10 sessions per month

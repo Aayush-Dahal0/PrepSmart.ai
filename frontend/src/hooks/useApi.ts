@@ -104,7 +104,26 @@ export const useConversations = () => {
     return false;
   };
 
-  return { conversations, loading, createConversation, deleteConversation, refetch: fetchConversations };
+  const renameConversation = async (id: string, newTitle: string): Promise<boolean> => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_BASE_URL}/conversations/${id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ title: newTitle }),
+      });
+
+      if (response.ok) {
+        await fetchConversations(); // Refresh list after rename
+        return true;
+      }
+    } catch (error) {
+      console.error('Failed to rename conversation:', error);
+    }
+    return false;
+  };
+
+  return { conversations, loading, createConversation, deleteConversation, renameConversation, refetch: fetchConversations };
 };
 
 // ------------------- Messages Hook -------------------
@@ -235,6 +254,42 @@ export const sendChatMessage = async (
     return true;
   } catch (error) {
     console.error('Failed to send message:', error);
+    return false;
+  }
+};
+
+// ------------------- User Profile & Auth -------------------
+export const updateUserProfile = async (name: string): Promise<boolean> => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/user/profile`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ name }),
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error('Failed to update profile:', error);
+    return false;
+  }
+};
+
+export const changeUserPassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/user/change-password`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ 
+        current_password: currentPassword, 
+        new_password: newPassword 
+      }),
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error('Failed to change password:', error);
     return false;
   }
 };

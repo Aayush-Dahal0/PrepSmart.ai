@@ -10,6 +10,7 @@ import { useConversations } from '@/hooks/useApi';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { MessageSquare, Calendar, Search, Trash2, Edit3, ExternalLink, Filter } from 'lucide-react';
+import RenameSessionDialog from '@/components/RenameSessionDialog';
 
 interface SessionManagementDialogProps {
   open: boolean;
@@ -22,12 +23,24 @@ const SessionManagementDialog: React.FC<SessionManagementDialogProps> = ({ open,
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [renameSession, setRenameSession] = useState<{id: string, title: string} | null>(null);
+  const [localConversations, setLocalConversations] = useState(conversations);
 
-  const filteredConversations = conversations.filter(conv => {
+  // Update local conversations when prop changes
+  React.useEffect(() => {
+    setLocalConversations(conversations);
+  }, [conversations]);
+
+  const filteredConversations = localConversations.filter(conv => {
     const matchesSearch = conv.title.toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchesSearch) return false;
 
     const convDate = new Date(conv.created_at);
+    if (isNaN(convDate.getTime())) {
+      // If date is invalid, only show in 'all' filter
+      return filter === 'all';
+    }
+    
     const now = new Date();
     
     switch (filter) {
@@ -68,6 +81,19 @@ const SessionManagementDialog: React.FC<SessionManagementDialogProps> = ({ open,
   const handleOpenSession = (id: string) => {
     onOpenChange(false);
     navigate(`/chat/${id}`);
+  };
+
+  const handleRename = (newTitle: string) => {
+    if (renameSession) {
+      setLocalConversations(prev => 
+        prev.map(conv => 
+          conv.id === renameSession.id 
+            ? { ...conv, title: newTitle }
+            : conv
+        )
+      );
+      setRenameSession(null);
+    }
   };
 
   const getDomainBadgeColor = (title: string) => {
@@ -148,11 +174,17 @@ const SessionManagementDialog: React.FC<SessionManagementDialogProps> = ({ open,
                           <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                             <div className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              {new Date(conversation.created_at).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric'
-                              })}
+                              {(() => {
+                                const date = new Date(conversation.created_at);
+                                if (isNaN(date.getTime())) {
+                                  return 'Recent session';
+                                }
+                                return date.toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                });
+                              })()}
                             </div>
                             <div className="flex items-center gap-1">
                               <MessageSquare className="h-3 w-3" />
@@ -165,8 +197,18 @@ const SessionManagementDialog: React.FC<SessionManagementDialogProps> = ({ open,
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => setRenameSession({id: conversation.id, title: conversation.title})}
+                            className="h-8 w-8 p-0"
+                            title="Rename session"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleOpenSession(conversation.id)}
                             className="h-8 w-8 p-0"
+                            title="Open session"
                           >
                             <ExternalLink className="h-4 w-4" />
                           </Button>
@@ -175,6 +217,7 @@ const SessionManagementDialog: React.FC<SessionManagementDialogProps> = ({ open,
                             size="sm"
                             onClick={() => handleDelete(conversation.id, conversation.title)}
                             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            title="Delete session"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -195,13 +238,24 @@ const SessionManagementDialog: React.FC<SessionManagementDialogProps> = ({ open,
 
           <div className="flex justify-between items-center pt-4 border-t">
             <p className="text-sm text-muted-foreground">
-              {filteredConversations.length} of {conversations.length} sessions
+              {filteredConversations.length} of {localConversations.length} sessions
             </p>
             <Button onClick={() => onOpenChange(false)}>
               Close
             </Button>
           </div>
         </div>
+
+        {/* Rename Dialog */}
+        {renameSession && (
+          <RenameSessionDialog
+            open={!!renameSession}
+            onOpenChange={(open) => !open && setRenameSession(null)}
+            sessionId={renameSession.id}
+            currentTitle={renameSession.title}
+            onRename={handleRename}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

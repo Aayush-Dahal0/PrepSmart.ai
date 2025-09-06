@@ -9,9 +9,9 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from .config import settings
 from .db import get_pool, close_pool
-from .auth_supabase import verify_token  # <-- now uses JWKS
+from .auth_supabase import verify_token, supabase
 from .repo import conversations as conv_repo, messages as msg_repo
-from .services.chat import stream_ollama, SYSTEM_PROMPT  # <-- Ollama
+from .services.chat import stream_ollama, SYSTEM_PROMPT
 
 app = FastAPI(title="AI Interviewer API", default_response_class=ORJSONResponse)
 
@@ -49,11 +49,14 @@ class CreateConvIn(BaseModel):
     title: str = "New Interview"
     domain: str = "general"
 
+class RenameConversationIn(BaseModel):
+    title: str
+
 @app.get("/conversations")
 @limiter.limit("120/minute")
 async def list_conversations(
     request: Request,
-    user_id: str = Depends(verify_token)  # ✅ Supabase user
+    user_id: str = Depends(verify_token)
 ):
     return await conv_repo.list_conversations(user_id)
 
@@ -66,6 +69,19 @@ async def create_conversation(
 ):
     return await conv_repo.create_conversation(user_id, body.title, body.domain)
 
+@app.put("/conversations/{conv_id}")
+@limiter.limit("60/minute")
+async def rename_conversation(
+    request: Request,
+    conv_id: str,
+    body: RenameConversationIn,
+    user_id: str = Depends(verify_token)
+):
+    success = await conv_repo.update_conversation_title(user_id, conv_id, body.title)
+    if not success:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return {"success": True, "message": "Conversation renamed successfully"}
+
 @app.delete("/conversations/{conv_id}")
 @limiter.limit("60/minute")
 async def delete_conversation(
@@ -75,6 +91,64 @@ async def delete_conversation(
 ):
     await conv_repo.delete_conversation(user_id, conv_id)
     return {"ok": True}
+
+# ---------------- User Profile & Auth ----------------
+class UpdateProfileIn(BaseModel):
+    name: str
+
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str
+
+@app.put("/user/profile")
+@limiter.limit("60/minute")
+async def update_profile(
+    request: Request,
+    body: UpdateProfileIn,
+    user_id: str = Depends(verify_token)
+):
+    try:
+        # Update user metadata in Supabase
+        result = supabase.auth.admin.update_user_by_id(
+            user_id,
+            {"user_metadata": {"name": body.name}}
+        )
+        return {"success": True, "message": "Profile updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to update profile: {str(e)}")
+
+@app.post("/user/change-password")
+@limiter.limit("30/minute")
+async def change_password(
+    request: Request,
+    body: ChangePasswordIn,
+    user_id: str = Depends(verify_token)
+):
+    try:
+        # Get user email
+        user_response = supabase.auth.admin.get_user_by_id(user_id)
+        user_email = user_response.user.email
+        
+        # Verify current password by attempting login
+        try:
+            supabase.auth.sign_in_with_password({
+                "email": user_email, 
+                "password": body.current_password
+            })
+        except:
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
+        
+        # Update password
+        supabase.auth.admin.update_user_by_id(
+            user_id,
+            {"password": body.new_password}
+        )
+        
+        return {"success": True, "message": "Password changed successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to change password: {str(e)}")
 
 # ---------------- Messages ----------------
 @app.get("/messages/{conv_id}")
@@ -120,7 +194,7 @@ async def chat_stream(
 
             buffer += text
 
-            # ✅ Stream structured JSON like messages.py
+            # Stream structured JSON like messages.py
             event = {
                 "role": "assistant",
                 "content": text,
@@ -139,7 +213,7 @@ async def chat_stream(
             latency_ms=int((time.time() - start) * 1000),
         )
 
-        # ✅ Send final structured message
+        # Send final structured message
         yield f"data: {json.dumps(saved)}\n\n"
         yield "data: [DONE]\n\n"
 

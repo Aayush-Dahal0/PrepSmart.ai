@@ -46,13 +46,26 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content }) => {
         return;
       }
 
-      // Handle score pattern
-      const scoreMatch = trimmedLine.match(/\*\*Score:\s*(\d+(?:\.\d+)?\/\d+)\*\*/);
+      // Handle score pattern - multiple formats
+      const scoreMatch = trimmedLine.match(/(?:\*\*)?(?:Score|Answer)\s*(?:\d+)?\s*(?:\*\*)?:?\s*(Excellent|Good|Average|Poor|Outstanding)/i) ||
+                        trimmedLine.match(/(?:\*\*)?Score:\s*(\d+(?:\.\d+)?\/\d+)(?:\*\*)?/) ||
+                        trimmedLine.match(/^(Score|Answer)\s*(\d+)?/i);
       if (scoreMatch) {
         flushList();
-        const [, score] = scoreMatch;
-        const [current, total] = score.split('/').map(Number);
-        const percentage = (current / total) * 100;
+        let score = scoreMatch[1] || scoreMatch[2] || 'Excellent';
+        let percentage = 85; // Default
+        
+        if (score.includes('/')) {
+          const [current, total] = score.split('/').map(Number);
+          percentage = (current / total) * 100;
+        } else if (typeof score === 'string') {
+          // Text-based scoring
+          const textScore = score.toLowerCase();
+          if (textScore.includes('excellent') || textScore.includes('outstanding')) percentage = 90;
+          else if (textScore.includes('good')) percentage = 75;
+          else if (textScore.includes('average')) percentage = 60;
+          else if (textScore.includes('poor')) percentage = 40;
+        }
         
         elements.push(
           <div key={`score-${index}`} className="my-6 p-4 bg-gradient-primary/10 rounded-xl border border-primary/20">

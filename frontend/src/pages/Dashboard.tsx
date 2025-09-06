@@ -223,8 +223,10 @@ const Dashboard = () => {
                 </div>
                 <CardTitle>
                   {conversations.filter(c => {
+                    const convDate = new Date(c.created_at);
+                    if (isNaN(convDate.getTime())) return false;
                     const today = new Date().toDateString();
-                    return new Date(c.created_at).toDateString() === today;
+                    return convDate.toDateString() === today;
                   }).length}
                 </CardTitle>
                 <CardDescription>Sessions Today</CardDescription>
@@ -256,7 +258,7 @@ const Dashboard = () => {
                     className="flex items-center gap-2"
                   >
                     <Settings className="h-4 w-4" />
-                    Manage All
+                    Manage Sessions
                   </Button>
                 </div>
 
