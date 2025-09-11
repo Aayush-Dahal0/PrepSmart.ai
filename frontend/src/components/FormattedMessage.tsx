@@ -35,6 +35,15 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content }) => {
       }
     };
 
+    // Helper: look ahead to next non-empty line
+    const peekNextNonEmpty = (startIndex: number) => {
+      for (let i = startIndex + 1; i < lines.length; i++) {
+        const n = lines[i].trim();
+        if (n) return n;
+      }
+      return '';
+    };
+
     lines.forEach((line, index) => {
       const trimmedLine = line.trim();
       
@@ -46,27 +55,71 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content }) => {
         return;
       }
 
-      // Handle score pattern - multiple formats
-      const scoreMatch = trimmedLine.match(/(?:\*\*)?(?:Score|Answer)\s*(?:\d+)?\s*(?:\*\*)?:?\s*(Excellent|Good|Average|Poor|Outstanding)/i) ||
-                        trimmedLine.match(/(?:\*\*)?Score:\s*(\d+(?:\.\d+)?\/\d+)(?:\*\*)?/) ||
-                        trimmedLine.match(/^(Score|Answer)\s*(\d+)?/i);
-      if (scoreMatch) {
+      // Handle score patterns (enhanced):
+      //  - "Score: 8/10"
+      //  - "Score 8/10"
+      //  - "Score" (on its own) and next line starts with "Excellent/Good/Average/Poor/Outstanding"
+      //  - "Answer: Good"
+      const inlineScore =
+        trimmedLine.match(/(?:\*\*)?Score\s*:\s*(\d+(?:\.\d+)?\s*\/\s*\d+)(?:\*\*)?/i) ||
+        trimmedLine.match(/(?:\*\*)?Score\s+(\d+(?:\.\d+)?\s*\/\s*\d+)(?:\*\*)?/i) ||
+        trimmedLine.match(/(?:\*\*)?Answer\s*:\s*(Excellent|Good|Average|Poor|Outstanding)(?:\*\*)?/i);
+
+      // "Score" header alone:
+      const isJustScoreHeader = /^(\*\*)?Score(\*\*)?$/i.test(trimmedLine);
+
+      if (inlineScore || isJustScoreHeader || /^(Score|Answer)\s*(\d+)?/i.test(trimmedLine)) {
         flushList();
-        let score = scoreMatch[1] || scoreMatch[2] || 'Excellent';
-        let percentage = 85; // Default
-        
-        if (score.includes('/')) {
-          const [current, total] = score.split('/').map(Number);
-          percentage = (current / total) * 100;
-        } else if (typeof score === 'string') {
-          // Text-based scoring
-          const textScore = score.toLowerCase();
-          if (textScore.includes('excellent') || textScore.includes('outstanding')) percentage = 90;
-          else if (textScore.includes('good')) percentage = 75;
-          else if (textScore.includes('average')) percentage = 60;
-          else if (textScore.includes('poor')) percentage = 40;
+
+        let scoreLabel: string | null = null;
+
+        if (inlineScore) {
+          scoreLabel = inlineScore[1]; // either "8/10" OR "Excellent|Good|..."
+        } else if (isJustScoreHeader) {
+          // Peek next line to infer label
+          const next = peekNextNonEmpty(index);
+          const nextGrade = next.match(/^(Excellent|Good|Average|Poor|Outstanding)\b/i);
+          const nextNumeric = next.match(/(\d+(?:\.\d+)?\s*\/\s*\d+)/);
+          if (nextGrade) {
+            scoreLabel = nextGrade[1];
+          } else if (nextNumeric) {
+            scoreLabel = nextNumeric[1];
+          } else {
+            // Fallback if nothing found
+            scoreLabel = 'Excellent';
+          }
+        } else {
+          // Matches "Score" or "Answer" loosely; try to infer from same or next line
+          const sameLineGrade = trimmedLine.match(/(Excellent|Good|Average|Poor|Outstanding)/i);
+          const sameLineNumeric = trimmedLine.match(/(\d+(?:\.\d+)?\s*\/\s*\d+)/);
+          if (sameLineGrade) {
+            scoreLabel = sameLineGrade[1];
+          } else if (sameLineNumeric) {
+            scoreLabel = sameLineNumeric[1];
+          } else {
+            const next = peekNextNonEmpty(index);
+            const nextGrade = next.match(/^(Excellent|Good|Average|Poor|Outstanding)\b/i);
+            const nextNumeric = next.match(/(\d+(?:\.\d+)?\s*\/\s*\d+)/);
+            scoreLabel = nextGrade?.[1] || nextNumeric?.[1] || 'Excellent';
+          }
         }
-        
+
+        let displayText = scoreLabel || 'Excellent';
+        let percentage = 85; // reasonable default
+
+        if (displayText && displayText.includes('/')) {
+          const [current, total] = displayText.split('/').map(s => Number(String(s).replace(/\s+/g, '')));
+          if (!isNaN(current) && !isNaN(total) && total > 0) {
+            percentage = Math.max(0, Math.min(100, (current / total) * 100));
+          }
+        } else if (typeof displayText === 'string') {
+          const t = displayText.toLowerCase();
+          if (t.includes('outstanding') || t.includes('excellent')) percentage = 90;
+          else if (t.includes('good')) percentage = 75;
+          else if (t.includes('average')) percentage = 60;
+          else if (t.includes('poor')) percentage = 40;
+        }
+
         elements.push(
           <div key={`score-${index}`} className="my-6 p-4 bg-gradient-primary/10 rounded-xl border border-primary/20">
             <div className="flex items-center gap-4">
@@ -75,7 +128,7 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content }) => {
                 <span className="text-sm font-medium text-muted-foreground">Your Score</span>
               </div>
               <Badge variant="secondary" className="text-lg font-bold px-4 py-2">
-                {score}
+                {displayText}
               </Badge>
               <div className="flex-1 bg-secondary/50 rounded-full h-3 overflow-hidden">
                 <div 
@@ -106,7 +159,7 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({ content }) => {
       // Handle numbered list items with optional bold formatting
       const listMatch = trimmedLine.match(/^(\d+)\.\s+(.*)/);
       if (listMatch) {
-        const [, , content] = listMatch;
+        const [, /*num*/, content] = listMatch;
         // Check if it has bold title format
         const boldTitleMatch = content.match(/^\*\*(.*?)\*\*:\s*(.*)/);
         if (boldTitleMatch) {

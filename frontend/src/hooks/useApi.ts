@@ -40,13 +40,13 @@ export const useConversations = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
 
-    const fetchConversations = async () => {
-      try {
-        setLoading(true);
-        const headers = await getAuthHeaders();
-        const response = await fetch(`${API_BASE_URL}/conversations`, {
-          headers,
-        });
+  const fetchConversations = async () => {
+    try {
+      setLoading(true);
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_BASE_URL}/conversations`, {
+        headers,
+      });
 
       if (response.ok) {
         const data = await response.json();
@@ -224,25 +224,25 @@ export const sendChatMessage = async (
           
           if (done) {
             // Process any remaining data in buffer
-              if (buffer.trim()) {
-                const trimmedBuffer = buffer.trim();
-                if (trimmedBuffer.startsWith('data: ') && trimmedBuffer !== 'data: [DONE]') {
-                  const content = trimmedBuffer.substring(6);
-                  if (content.trim()) {
-                    try {
-                      // Parse the JSON content from the streaming response
-                      const chunkData = JSON.parse(content);
-                      // Extract just the content field for the UI
-                      if (chunkData.content) {
-                        onChunk(chunkData.content);
-                      }
-                    } catch (e) {
-                      // Fallback to raw content if not JSON
-                      onChunk(content);
+            if (buffer.trim()) {
+              const trimmedBuffer = buffer.trim();
+              if (trimmedBuffer.startsWith('data: ') && trimmedBuffer !== 'data: [DONE]') {
+                const content = trimmedBuffer.substring(6);
+                if (content.trim()) {
+                  try {
+                    // Parse the JSON content from the streaming response
+                    const chunkData = JSON.parse(content);
+                    // Extract just the content field for the UI
+                    if (chunkData.content) {
+                      onChunk(chunkData.content);
                     }
+                  } catch (e) {
+                    // Fallback to raw content if not JSON
+                    onChunk(content);
                   }
                 }
               }
+            }
             break;
           }
         }
@@ -262,13 +262,25 @@ export const sendChatMessage = async (
 export const updateUserProfile = async (name: string): Promise<boolean> => {
   try {
     const headers = await getAuthHeaders();
+
+    // Call your backend to persist profile (e.g., user_profiles table)
     const response = await fetch(`${API_BASE_URL}/user/profile`, {
       method: 'PUT',
       headers,
       body: JSON.stringify({ name }),
     });
 
-    return response.ok;
+    if (!response.ok) {
+      return false;
+    }
+
+    // Also update Supabase user metadata so UI reflects immediately
+    await supabase.auth.updateUser({ data: { name } }).catch(() => { /* ignore if not needed */ });
+
+    // Refresh session so any UI relying on session picks up new values immediately
+    await supabase.auth.refreshSession();
+
+    return true;
   } catch (error) {
     console.error('Failed to update profile:', error);
     return false;
@@ -277,17 +289,22 @@ export const updateUserProfile = async (name: string): Promise<boolean> => {
 
 export const changeUserPassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
   try {
-    const headers = await getAuthHeaders();
-    const response = await fetch(`${API_BASE_URL}/user/change-password`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ 
-        current_password: currentPassword, 
-        new_password: newPassword 
-      }),
+    // ✅ Change password entirely on the frontend using the current session.
+    // Supabase will verify session and rotate tokens on success.
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword,
     });
 
-    return response.ok;
+    if (error) {
+      console.error('Supabase password update error:', error.message);
+      return false;
+    }
+
+    // Optional: reauthenticate if you want to be extra safe, but not required.
+    // After password change, refresh session so UI/token is up-to-date.
+    await supabase.auth.refreshSession();
+
+    return true;
   } catch (error) {
     console.error('Failed to change password:', error);
     return false;
