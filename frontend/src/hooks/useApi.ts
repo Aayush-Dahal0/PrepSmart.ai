@@ -1,18 +1,23 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
-const API_BASE_URL = process.env.NODE_ENV === 'development' ? 'http://127.0.0.1:8000' : 'http://127.0.0.1:8000';
+const API_BASE_URL =
+  process.env.NODE_ENV === 'development'
+    ? 'http://127.0.0.1:8000'
+    : 'http://127.0.0.1:8000';
 
-// Utility function to get auth headers
+// ------------------- Utility -------------------
 const getAuthHeaders = async () => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    console.log('Session:', session); // Debug log
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     const headers = {
       'Content-Type': 'application/json',
-      ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` }),
+      ...(session?.access_token && {
+        Authorization: `Bearer ${session.access_token}`,
+      }),
     };
-    console.log('Headers:', headers); // Debug log
     return headers;
   } catch (error) {
     console.error('Error getting auth headers:', error);
@@ -20,6 +25,7 @@ const getAuthHeaders = async () => {
   }
 };
 
+// ------------------- Types -------------------
 export interface Conversation {
   id: string;
   title: string;
@@ -65,19 +71,19 @@ export const useConversations = () => {
 
   const createConversation = async (
     title: string,
-    domain: string // ✅ domain is now required
+    domain: string
   ): Promise<string | null> => {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_BASE_URL}/conversations`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ title, domain }), // ✅ backend expects this
+        body: JSON.stringify({ title, domain }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        await fetchConversations(); // Refresh list
+        await fetchConversations();
         return data.id;
       }
     } catch (error) {
@@ -95,7 +101,7 @@ export const useConversations = () => {
       });
 
       if (response.ok) {
-        await fetchConversations(); // Refresh list after deletion
+        await fetchConversations();
         return true;
       }
     } catch (error) {
@@ -104,7 +110,10 @@ export const useConversations = () => {
     return false;
   };
 
-  const renameConversation = async (id: string, newTitle: string): Promise<boolean> => {
+  const renameConversation = async (
+    id: string,
+    newTitle: string
+  ): Promise<boolean> => {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_BASE_URL}/conversations/${id}`, {
@@ -114,7 +123,7 @@ export const useConversations = () => {
       });
 
       if (response.ok) {
-        await fetchConversations(); // Refresh list after rename
+        await fetchConversations();
         return true;
       }
     } catch (error) {
@@ -123,7 +132,14 @@ export const useConversations = () => {
     return false;
   };
 
-  return { conversations, loading, createConversation, deleteConversation, renameConversation, refetch: fetchConversations };
+  return {
+    conversations,
+    loading,
+    createConversation,
+    deleteConversation,
+    renameConversation,
+    refetch: fetchConversations,
+  };
 };
 
 // ------------------- Messages Hook -------------------
@@ -133,7 +149,7 @@ export const useMessages = (chatId: string) => {
 
   const fetchMessages = async () => {
     if (!chatId) return;
-    
+
     try {
       setLoading(true);
       const headers = await getAuthHeaders();
@@ -143,12 +159,29 @@ export const useMessages = (chatId: string) => {
 
       if (response.ok) {
         const data = await response.json();
-        // Ensure timestamps are properly handled from backend
         const messagesWithTimestamps = data.map((msg: Message) => ({
           ...msg,
-          timestamp: msg.timestamp || new Date().toISOString()
+          id: `server-${msg.id}`, // mark backend messages
+          timestamp: msg.timestamp || new Date().toISOString(),
         }));
-        setMessages(messagesWithTimestamps);
+
+        setMessages((prev) => {
+          // remove assistant placeholders once confirmed messages arrive
+          const filtered = prev.filter(
+            (m) => !(m.role === 'assistant' && !m.id.startsWith('server-'))
+          );
+
+          const existing = new Map(filtered.map((m) => [m.id, m]));
+          for (const msg of messagesWithTimestamps) {
+            existing.set(msg.id, msg);
+          }
+
+          return Array.from(existing.values()).sort(
+            (a, b) =>
+              new Date(a.timestamp).getTime() -
+              new Date(b.timestamp).getTime()
+          );
+        });
       }
     } catch (error) {
       console.error('Failed to fetch messages:', error);
@@ -168,7 +201,8 @@ export const useMessages = (chatId: string) => {
 export const sendChatMessage = async (
   chatId: string,
   message: string,
-  onChunk?: (chunk: string) => void
+  onChunk?: (chunk: string, isFinal?: boolean) => void,
+  onProgress?: (progress: number) => void
 ): Promise<boolean> => {
   try {
     const headers = await getAuthHeaders();
@@ -187,64 +221,41 @@ export const sendChatMessage = async (
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let totalReceived = 0;
 
       try {
         while (true) {
           const { done, value } = await reader.read();
-          
+
           if (value) {
-            // Decode the chunk and add to buffer
             const chunk = decoder.decode(value, { stream: true });
             buffer += chunk;
-            
-            // Process complete lines from buffer
+            totalReceived += value.length;
+
+            if (onProgress) onProgress(totalReceived);
+
             const lines = buffer.split('\n');
-            buffer = lines.pop() || ''; // Keep incomplete line in buffer
-            
+            buffer = lines.pop() || '';
+
             for (const line of lines) {
-              const trimmedLine = line.trim();
-              if (trimmedLine.startsWith('data: ') && trimmedLine !== 'data: [DONE]') {
-                const content = trimmedLine.substring(6);
+              const trimmed = line.trim();
+              if (trimmed.startsWith('data: ') && trimmed !== 'data: [DONE]') {
+                const content = trimmed.substring(6);
                 if (content.trim()) {
                   try {
-                    // Parse the JSON content from the streaming response
-                    const chunkData = JSON.parse(content);
-                    // Extract just the content field for the UI
-                    if (chunkData.content) {
-                      onChunk(chunkData.content);
+                    const parsed = JSON.parse(content);
+                    if (parsed.content) {
+                      onChunk(parsed.content, parsed.final || false);
                     }
-                  } catch (e) {
-                    // Fallback to raw content if not JSON
-                    onChunk(content);
+                  } catch {
+                    onChunk(content, false);
                   }
                 }
               }
             }
           }
-          
-          if (done) {
-            // Process any remaining data in buffer
-            if (buffer.trim()) {
-              const trimmedBuffer = buffer.trim();
-              if (trimmedBuffer.startsWith('data: ') && trimmedBuffer !== 'data: [DONE]') {
-                const content = trimmedBuffer.substring(6);
-                if (content.trim()) {
-                  try {
-                    // Parse the JSON content from the streaming response
-                    const chunkData = JSON.parse(content);
-                    // Extract just the content field for the UI
-                    if (chunkData.content) {
-                      onChunk(chunkData.content);
-                    }
-                  } catch (e) {
-                    // Fallback to raw content if not JSON
-                    onChunk(content);
-                  }
-                }
-              }
-            }
-            break;
-          }
+
+          if (done) break;
         }
       } finally {
         reader.releaseLock();
@@ -262,22 +273,15 @@ export const sendChatMessage = async (
 export const updateUserProfile = async (name: string): Promise<boolean> => {
   try {
     const headers = await getAuthHeaders();
-
-    // Call your backend to persist profile (e.g., user_profiles table)
     const response = await fetch(`${API_BASE_URL}/user/profile`, {
       method: 'PUT',
       headers,
       body: JSON.stringify({ name }),
     });
 
-    if (!response.ok) {
-      return false;
-    }
+    if (!response.ok) return false;
 
-    // Also update Supabase user metadata so UI reflects immediately
-    await supabase.auth.updateUser({ data: { name } }).catch(() => { /* ignore if not needed */ });
-
-    // Refresh session so any UI relying on session picks up new values immediately
+    await supabase.auth.updateUser({ data: { name } }).catch(() => {});
     await supabase.auth.refreshSession();
 
     return true;
@@ -287,11 +291,12 @@ export const updateUserProfile = async (name: string): Promise<boolean> => {
   }
 };
 
-export const changeUserPassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
+export const changeUserPassword = async (
+  currentPassword: string,
+  newPassword: string
+): Promise<boolean> => {
   try {
-    // ✅ Change password entirely on the frontend using the current session.
-    // Supabase will verify session and rotate tokens on success.
-    const { data, error } = await supabase.auth.updateUser({
+    const { error } = await supabase.auth.updateUser({
       password: newPassword,
     });
 
@@ -300,10 +305,7 @@ export const changeUserPassword = async (currentPassword: string, newPassword: s
       return false;
     }
 
-    // Optional: reauthenticate if you want to be extra safe, but not required.
-    // After password change, refresh session so UI/token is up-to-date.
     await supabase.auth.refreshSession();
-
     return true;
   } catch (error) {
     console.error('Failed to change password:', error);

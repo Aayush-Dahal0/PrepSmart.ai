@@ -23,7 +23,8 @@ const ChatPage = () => {
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-      const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      const scrollElement =
+        scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (scrollElement) {
         scrollElement.scrollTop = scrollElement.scrollHeight;
       }
@@ -44,11 +45,12 @@ const ChatPage = () => {
       timestamp: new Date().toISOString(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInputMessage('');
     setIsLoading(true);
     setStreamingMessage('');
 
+    // Placeholder assistant message
     const assistantMessageId = (Date.now() + 1).toString();
     const assistantMessage: Message = {
       id: assistantMessageId,
@@ -56,39 +58,43 @@ const ChatPage = () => {
       role: 'assistant',
       timestamp: new Date().toISOString(),
     };
-    setMessages(prev => [...prev, assistantMessage]);
+    setMessages((prev) => [...prev, assistantMessage]);
 
     let fullResponse = '';
 
     const success = await sendChatMessage(
       chatId,
-      inputMessage,
-      (chunk) => {
+      userMessage.content,
+      (chunk, isFinal) => {
+        if (isFinal) {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessageId
+                ? {
+                    ...msg,
+                    id: `server-${Date.now()}`,
+                    content: chunk,
+                    timestamp: new Date().toISOString(),
+                  }
+                : msg
+            )
+          );
+          return;
+        }
+
         fullResponse += chunk;
         setStreamingMessage(fullResponse);
 
-        // ✅ progressively update assistant placeholder
-        setMessages(prev =>
-          prev.map(msg =>
-            msg.id === assistantMessageId
-              ? { ...msg, content: fullResponse }
-              : msg
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId ? { ...msg, content: fullResponse } : msg
           )
         );
       }
     );
 
-    if (success && fullResponse) {
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.id === assistantMessageId
-            ? { ...msg, content: fullResponse, timestamp: new Date().toISOString() }
-            : msg
-        )
-      );
-      setStreamingMessage('');
-    } else {
-      setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
+    if (!success) {
+      setMessages((prev) => prev.filter((msg) => msg.id !== assistantMessageId));
     }
 
     setIsLoading(false);
@@ -156,13 +162,16 @@ const ChatPage = () => {
               ) : messages.length === 0 ? (
                 <div className="text-center py-12">
                   <Bot className="mx-auto h-16 w-16 text-primary mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Ready to start your interview?</h3>
+                  <h3 className="text-lg font-semibold mb-2">
+                    Ready to start your interview?
+                  </h3>
                   <p className="text-muted-foreground mb-4">
-                    I'm your AI interviewer. Tell me about the position you're preparing for,
-                    and I'll help you practice with realistic questions.
+                    I'm your AI interviewer. Tell me about the position you're preparing
+                    for, and I'll help you practice with realistic questions.
                   </p>
                   <div className="text-sm text-muted-foreground">
-                    Try saying: "I'm preparing for a software engineer position at a tech startup"
+                    Try saying: "I'm preparing for a software engineer position at a tech
+                    startup"
                   </div>
                 </div>
               ) : (
@@ -199,29 +208,33 @@ const ChatPage = () => {
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 mb-2">
                             <User className="h-3 w-3 text-primary-foreground/80" />
-                            <span className="text-xs font-medium text-primary-foreground/90">You asked:</span>
+                            <span className="text-xs font-medium text-primary-foreground/90">
+                              You asked:
+                            </span>
                           </div>
-                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                            {message.content}
+                          </p>
                         </div>
                       )}
                       <div
                         className={`text-xs mt-3 flex items-center gap-1 ${
-                          message.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground/80'
+                          message.role === 'user'
+                            ? 'text-primary-foreground/70'
+                            : 'text-muted-foreground/80'
                         }`}
                       >
                         {(() => {
                           let date: Date;
 
-                          if (!message.timestamp) {
-                            return 'Just now';
-                          }
+                          if (!message.timestamp) return 'Just now';
 
                           if (typeof message.timestamp === 'string') {
                             if (message.timestamp.match(/^\d+$/)) {
                               const timestamp = parseInt(message.timestamp);
-                              date = new Date(timestamp > 9999999999 ? timestamp : timestamp * 1000);
-                            } else if (message.timestamp.includes('T') || message.timestamp.includes('Z')) {
-                              date = new Date(message.timestamp);
+                              date = new Date(
+                                timestamp > 9999999999 ? timestamp : timestamp * 1000
+                              );
                             } else {
                               date = new Date(message.timestamp);
                             }
@@ -229,19 +242,26 @@ const ChatPage = () => {
                             date = new Date(message.timestamp);
                           }
 
-                          if (isNaN(date.getTime())) {
-                            console.warn('Invalid timestamp format:', message.timestamp);
-                            return 'Just now';
-                          }
+                          if (isNaN(date.getTime())) return 'Just now';
 
                           const now = new Date();
-                          const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+                          const diffInMinutes = Math.floor(
+                            (now.getTime() - date.getTime()) / (1000 * 60)
+                          );
 
                           if (diffInMinutes < 1) return 'Just now';
                           if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-                          if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+                          if (date.toDateString() === now.toDateString()) {
+                            return date.toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            });
+                          }
 
-                          return date.toLocaleTimeString([], {
+                          return date.toLocaleString([], {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
                             hour: '2-digit',
                             minute: '2-digit',
                           });
@@ -267,17 +287,11 @@ const ChatPage = () => {
                 ref={inputRef}
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type your message..."
+                onKeyDown={handleKeyPress}
+                placeholder="Type your response..."
                 disabled={isLoading}
-                className="flex-1"
               />
-              <Button
-                onClick={handleSendMessage}
-                disabled={isLoading || !inputMessage.trim()}
-                variant="gradient"
-                size="icon"
-              >
+              <Button onClick={handleSendMessage} disabled={isLoading}>
                 <Send className="h-4 w-4" />
               </Button>
             </div>

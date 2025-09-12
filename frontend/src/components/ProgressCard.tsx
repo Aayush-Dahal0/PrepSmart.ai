@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, Calendar, MessageSquare, Clock, Target } from 'lucide-react';
+import { TrendingUp, Calendar, Clock } from 'lucide-react';
 import { useConversations } from '@/hooks/useApi';
 
 const ProgressCard = () => {
@@ -10,7 +10,6 @@ const ProgressCard = () => {
 
   // Calculate statistics
   const totalSessions = conversations.length;
-  const totalMessages = conversations.reduce((sum, conv) => sum + (conv.message_count || 0), 0);
   
   const today = new Date();
   const week = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -59,20 +58,12 @@ const ProgressCard = () => {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Quick Stats */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           <div className="text-center p-3 bg-primary/5 rounded-lg">
             <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground mb-1">
-              <MessageSquare className="h-3 w-3" />
               Total Sessions
             </div>
             <div className="text-2xl font-bold text-primary">{totalSessions}</div>
-          </div>
-          <div className="text-center p-3 bg-primary/5 rounded-lg">
-            <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground mb-1">
-              <Target className="h-3 w-3" />
-              Questions Answered
-            </div>
-            <div className="text-2xl font-bold text-primary">{totalMessages}</div>
           </div>
         </div>
 

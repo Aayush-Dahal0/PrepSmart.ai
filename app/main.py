@@ -108,7 +108,6 @@ async def update_profile(
     user_id: str = Depends(verify_token)
 ):
     try:
-        # Update user metadata in Supabase
         result = supabase.auth.admin.update_user_by_id(
             user_id,
             {"user_metadata": {"name": body.name}}
@@ -125,25 +124,22 @@ async def change_password(
     user_id: str = Depends(verify_token)
 ):
     try:
-        # Get user email
         user_response = supabase.auth.admin.get_user_by_id(user_id)
         user_email = user_response.user.email
-        
-        # Verify current password by attempting login
+
         try:
             supabase.auth.sign_in_with_password({
-                "email": user_email, 
+                "email": user_email,
                 "password": body.current_password
             })
         except:
             raise HTTPException(status_code=400, detail="Current password is incorrect")
-        
-        # Update password
+
         supabase.auth.admin.update_user_by_id(
             user_id,
             {"password": body.new_password}
         )
-        
+
         return {"success": True, "message": "Password changed successfully"}
     except HTTPException:
         raise
@@ -187,25 +183,20 @@ async def chat_stream(
         buffer = ""
 
         async for chunk in stream_ollama(messages):
-            if isinstance(chunk, dict):
-                text = chunk.get("content", "")
-            else:
-                text = str(chunk)
-
+            text = chunk.get("content", "") if isinstance(chunk, dict) else str(chunk)
             buffer += text
 
-            # Stream structured JSON like messages.py
             event = {
                 "role": "assistant",
                 "content": text,
                 "timestamp": time.time(),
+                "final": False
             }
             yield f"data: {json.dumps(event)}\n\n"
 
             if await request.is_disconnected():
                 break
 
-        # Save final message in DB
         saved = await msg_repo.add_message(
             conv_id,
             "assistant",
@@ -213,7 +204,7 @@ async def chat_stream(
             latency_ms=int((time.time() - start) * 1000),
         )
 
-        # Send final structured message
+        saved["final"] = True  # ✅ mark final
         yield f"data: {json.dumps(saved)}\n\n"
         yield "data: [DONE]\n\n"
 
