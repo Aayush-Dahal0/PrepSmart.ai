@@ -10,3 +10,4 @@ python-dotenv==1.1.1
 python_jose==3.5.0
 slowapi==0.1.9
 supabase==2.18.1
+uvicorn==0.23.2
