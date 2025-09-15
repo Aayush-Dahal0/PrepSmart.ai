@@ -233,7 +233,7 @@ const Dashboard = () => {
               </CardHeader>
             </Card>
 
-            <Card className="bg-gradient-glass backdrop-blur-sm border-white/20">
+            {/* <Card className="bg-gradient-glass backdrop-blur-sm border-white/20">
               <CardHeader className="text-center pb-2">
                 <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-2">
                   <BarChart3 className="h-6 w-6 text-primary" />
@@ -243,7 +243,7 @@ const Dashboard = () => {
                 </CardTitle>
                 <CardDescription>Total Questions</CardDescription>
               </CardHeader>
-            </Card>
+            </Card> */}
           </div>
 
           {/* Progress Analytics */}

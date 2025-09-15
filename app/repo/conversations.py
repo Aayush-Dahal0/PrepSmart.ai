@@ -15,8 +15,8 @@ async def list_conversations(user_id: str):
             "id": str(r["id"]),
             "title": r["title"],
             "domain": r["domain"],
-            "timestamp": r["created_at"],
-            "last_updated": r["updated_at"],
+            "created_at": r["created_at"].isoformat(),
+            "updated_at": r["updated_at"].isoformat(),
         }
         for r in rows
     ]
@@ -32,8 +32,8 @@ async def create_conversation(user_id: str, title: str, domain: str):
         "id": str(row["id"]),
         "title": row["title"],
         "domain": row["domain"],
-        "timestamp": row["created_at"],
-        "last_updated": row["updated_at"],
+        "created_at": row["created_at"].isoformat(),
+        "updated_at": row["updated_at"].isoformat(),
     }
 
 async def delete_conversation(user_id: str, conv_id: str):

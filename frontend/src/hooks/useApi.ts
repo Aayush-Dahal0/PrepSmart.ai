@@ -294,21 +294,42 @@ export const updateUserProfile = async (name: string): Promise<boolean> => {
 export const changeUserPassword = async (
   currentPassword: string,
   newPassword: string
-): Promise<boolean> => {
+): Promise<{ success: boolean; error?: string }> => {
   try {
+    // Password strength validation
+    if (newPassword.length < 8) {
+      return { success: false, error: 'Password must be at least 8 characters long' };
+    }
+    
+    if (!/[A-Z]/.test(newPassword)) {
+      return { success: false, error: 'Password must contain at least one uppercase letter' };
+    }
+    
+    if (!/[a-z]/.test(newPassword)) {
+      return { success: false, error: 'Password must contain at least one lowercase letter' };
+    }
+    
+    if (!/[0-9]/.test(newPassword)) {
+      return { success: false, error: 'Password must contain at least one number' };
+    }
+    
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
+      return { success: false, error: 'Password must contain at least one special character' };
+    }
+
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
     });
 
     if (error) {
       console.error('Supabase password update error:', error.message);
-      return false;
+      return { success: false, error: error.message };
     }
 
     await supabase.auth.refreshSession();
-    return true;
+    return { success: true };
   } catch (error) {
     console.error('Failed to change password:', error);
-    return false;
+    return { success: false, error: 'An unexpected error occurred' };
   }
 };

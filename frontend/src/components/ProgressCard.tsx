@@ -10,40 +10,58 @@ const ProgressCard = () => {
 
   // Calculate statistics
   const totalSessions = conversations.length;
-  
+
   const today = new Date();
-  const week = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const month = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-  
-  const sessionsThisWeek = conversations.filter(conv => {
+
+  // --- TODAY ---
+  const sessionsToday = conversations.filter(conv => {
     const convDate = new Date(conv.created_at);
-    return !isNaN(convDate.getTime()) && convDate >= week;
-  }).length;
-  
-  const sessionsThisMonth = conversations.filter(conv => {
-    const convDate = new Date(conv.created_at);
-    return !isNaN(convDate.getTime()) && convDate >= month;
+    return (
+      !isNaN(convDate.getTime()) &&
+      convDate.getDate() === today.getDate() &&
+      convDate.getMonth() === today.getMonth() &&
+      convDate.getFullYear() === today.getFullYear()
+    );
   }).length;
 
+  // --- THIS WEEK ---
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday as start
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const sessionsThisWeek = conversations.filter(conv => {
+    const convDate = new Date(conv.created_at);
+    return !isNaN(convDate.getTime()) && convDate >= startOfWeek;
+  }).length;
+
+  // --- THIS MONTH ---
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  const sessionsThisMonth = conversations.filter(conv => {
+    const convDate = new Date(conv.created_at);
+    return !isNaN(convDate.getTime()) && convDate >= startOfMonth;
+  }).length;
+
+  // Progress values
   const weeklyProgress = Math.min((sessionsThisWeek / 3) * 100, 100); // Goal: 3 sessions per week
   const monthlyProgress = Math.min((sessionsThisMonth / 10) * 100, 100); // Goal: 10 sessions per month
 
   // Analyze domains
   const domainStats = conversations.reduce((acc, conv) => {
-    const title = conv.title.toLowerCase();
+    const title = conv.title?.toLowerCase() || '';
     let domain = 'General';
-    
+
     if (title.includes('backend') || title.includes('api')) domain = 'Backend';
     else if (title.includes('frontend') || title.includes('react')) domain = 'Frontend';
     else if (title.includes('data') || title.includes('ml')) domain = 'Data/ML';
     else if (title.includes('hr') || title.includes('behavioral')) domain = 'HR/Behavioral';
     else if (title.includes('system') || title.includes('design')) domain = 'System Design';
-    
+
     acc[domain] = (acc[domain] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  const topDomain = Object.entries(domainStats).sort(([,a], [,b]) => b - a)[0];
+  const topDomain = Object.entries(domainStats).sort(([, a], [, b]) => b - a)[0];
 
   return (
     <Card className="bg-gradient-glass backdrop-blur-sm border-white/20">
@@ -58,12 +76,18 @@ const ProgressCard = () => {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 gap-4">
-          <div className="text-center p-3 bg-primary/5 rounded-lg">
-            <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground mb-1">
-              Total Sessions
-            </div>
+        <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="p-3 bg-primary/5 rounded-lg">
+            <div className="text-sm text-muted-foreground mb-1">Total Sessions</div>
             <div className="text-2xl font-bold text-primary">{totalSessions}</div>
+          </div>
+          <div className="p-3 bg-primary/5 rounded-lg">
+            <div className="text-sm text-muted-foreground mb-1">This Week</div>
+            <div className="text-2xl font-bold text-primary">{sessionsThisWeek}</div>
+          </div>
+          <div className="p-3 bg-primary/5 rounded-lg">
+            <div className="text-sm text-muted-foreground mb-1">Today</div>
+            <div className="text-2xl font-bold text-primary">{sessionsToday}</div>
           </div>
         </div>
 
