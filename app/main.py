@@ -40,6 +40,10 @@ async def _shutdown():
     await close_pool()
 
 # ---------------- Health Check ----------------
+@app.get("/")
+async def root():
+    return {"message": "PrepSmart API is running!", "docs": "/docs"}
+
 @app.get("/health")
 async def health():
     return {"ok": True}
