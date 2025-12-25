@@ -15,8 +15,14 @@ from .services.chat import stream_ollama, SYSTEM_PROMPT
 
 app = FastAPI(title="AI Interviewer API", default_response_class=ORJSONResponse)
 
+# ---------------- Rate limiting ----------------
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+
 # ---------------- CORS ----------------
-origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+# CORS must be the last middleware added so it runs FIRST
+origins = [o.strip().rstrip("/") for o in settings.CORS_ORIGINS.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins or ["*"],
@@ -24,11 +30,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# ---------------- Rate limiting ----------------
-limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
-app.state.limiter = limiter
-app.add_middleware(SlowAPIMiddleware)
 
 # ---------------- Startup / Shutdown ----------------
 @app.on_event("startup")
