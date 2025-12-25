@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
 
 // ------------------- Utility -------------------
 const getAuthHeaders = async () => {
@@ -278,7 +278,7 @@ export const updateUserProfile = async (name: string): Promise<boolean> => {
 
     if (!response.ok) return false;
 
-    await supabase.auth.updateUser({ data: { name } }).catch(() => {});
+    await supabase.auth.updateUser({ data: { name } }).catch(() => { });
     await supabase.auth.refreshSession();
 
     return true;
@@ -297,19 +297,19 @@ export const changeUserPassword = async (
     if (newPassword.length < 8) {
       return { success: false, error: 'Password must be at least 8 characters long' };
     }
-    
+
     if (!/[A-Z]/.test(newPassword)) {
       return { success: false, error: 'Password must contain at least one uppercase letter' };
     }
-    
+
     if (!/[a-z]/.test(newPassword)) {
       return { success: false, error: 'Password must contain at least one lowercase letter' };
     }
-    
+
     if (!/[0-9]/.test(newPassword)) {
       return { success: false, error: 'Password must contain at least one number' };
     }
-    
+
     if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
       return { success: false, error: 'Password must contain at least one special character' };
     }
