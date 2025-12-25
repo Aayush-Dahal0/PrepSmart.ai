@@ -90,6 +90,4 @@ PrepSmart is an intelligent AI-powered interview preparation platform designed t
 -   **SSL Verification**: For development compatibility, SSL verification for the database connection is currently disabled in `app/db.py`. For production environments with strict security requirements, ensure your database provider uses a trusted certificate authority or configure the CA bundle correctly.
 -   **CORS**: The API is currently configured to allow all origins (`*`) for ease of development. For production, update `CORS_ORIGINS` in `app/config.py` or your environment variables to list only your frontend domain.
 
-## Deployment
 
-See [DEPLOY.md](DEPLOY.md) for detailed deployment instructions.
