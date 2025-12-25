@@ -11,7 +11,7 @@ PrepSmart is an intelligent AI-powered interview preparation platform designed t
 -   **Real-time Feedback**: Receive instant scores and tips after each exchange.
 -   **Conversation History**: Save and review past interview sessions.
 -   **User Authentication**: Secure login and signup via Supabase.
--   **Responsive Design**: Modern, beautiful UI built with React and Tailwind CSS.
+-   **Responsive Design**: Modern, beautiful UI built with React, TypeScript, and Tailwind CSS.
 
 ## Tech Stack
 
@@ -22,7 +22,7 @@ PrepSmart is an intelligent AI-powered interview preparation platform designed t
 -   **AsyncPG**: Asynchronous database driver.
 
 ### Frontend
--   **React (Vite)**: Fast and modern frontend framework.
+-   **React (Vite) + TypeScript**: Fast and modern frontend framework.
 -   **Tailwind CSS**: Utility-first CSS framework for styling.
 -   **Shadcn UI**: Reusable and accessible UI components.
 -   **Lucide React**: Beautiful icons.
@@ -90,6 +90,4 @@ PrepSmart is an intelligent AI-powered interview preparation platform designed t
 -   **SSL Verification**: For development compatibility, SSL verification for the database connection is currently disabled in `app/db.py`. For production environments with strict security requirements, ensure your database provider uses a trusted certificate authority or configure the CA bundle correctly.
 -   **CORS**: The API is currently configured to allow all origins (`*`) for ease of development. For production, update `CORS_ORIGINS` in `app/config.py` or your environment variables to list only your frontend domain.
 
-## Deployment
 
-See [DEPLOY.md](DEPLOY.md) for detailed deployment instructions.
