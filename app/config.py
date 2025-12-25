@@ -21,8 +21,8 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "*"
 
     # Ollama
-    OLLAMA_URL: str = "http://localhost:11434/api/chat"
-    OLLAMA_MODEL: str = "llama3"
+    # Gemini
+    GEMINI_API_KEY: str | None = None
 
     class Config:
         env_file = ".env"

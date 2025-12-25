@@ -27,7 +27,7 @@ const Dashboard = () => {
 
   const handleCreateConversation = async () => {
     if (!newConversationTitle.trim()) return;
-    
+
     const conversationId = await createConversation(newConversationTitle, selectedDomain);
     if (conversationId) {
       toast({ title: "Interview session created!", description: "Ready to start practicing." });
@@ -53,11 +53,11 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-primary rounded-xl">
-                <BrainCircuit className="h-6 w-6 text-white" />
+                <img src="/logo.png" alt="PrepSmart Logo" className="h-6 w-6 object-contain invert brightness-0" />
               </div>
               <h1 className="text-xl font-bold">PrepSmart</h1>
             </div>
-            
+
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <User className="h-4 w-4" />
@@ -139,50 +139,50 @@ const Dashboard = () => {
                         <SelectItem value="ml">Machine Learning</SelectItem>
                         <SelectItem value="cybersecurity">Cybersecurity</SelectItem>
                         <SelectItem value="qa">Quality Assurance</SelectItem>
-                        
+
                         {/* Business & Management */}
                         <SelectItem value="product">Product Management</SelectItem>
                         <SelectItem value="projectmanagement">Project Management</SelectItem>
                         <SelectItem value="consulting">Management Consulting</SelectItem>
                         <SelectItem value="business">Business Analysis</SelectItem>
                         <SelectItem value="strategy">Business Strategy</SelectItem>
-                        
+
                         {/* Design & Creative */}
                         <SelectItem value="design">UI/UX Design</SelectItem>
                         <SelectItem value="graphic">Graphic Design</SelectItem>
                         <SelectItem value="creative">Creative Director</SelectItem>
-                        
+
                         {/* Sales & Marketing */}
                         <SelectItem value="sales">Sales</SelectItem>
                         <SelectItem value="marketing">Digital Marketing</SelectItem>
                         <SelectItem value="content">Content Marketing</SelectItem>
                         <SelectItem value="social">Social Media Marketing</SelectItem>
-                        
+
                         {/* Finance & Operations */}
                         <SelectItem value="finance">Finance</SelectItem>
                         <SelectItem value="accounting">Accounting</SelectItem>
                         <SelectItem value="operations">Operations</SelectItem>
                         <SelectItem value="supply">Supply Chain</SelectItem>
-                        
+
                         {/* Healthcare & Science */}
                         <SelectItem value="healthcare">Healthcare</SelectItem>
                         <SelectItem value="nursing">Nursing</SelectItem>
                         <SelectItem value="research">Research</SelectItem>
                         <SelectItem value="biotechnology">Biotechnology</SelectItem>
-                        
+
                         {/* Education & HR */}
                         <SelectItem value="education">Education/Teaching</SelectItem>
                         <SelectItem value="hr">Human Resources</SelectItem>
                         <SelectItem value="training">Training & Development</SelectItem>
-                        
+
                         {/* Legal & Compliance */}
                         <SelectItem value="legal">Legal</SelectItem>
                         <SelectItem value="compliance">Compliance</SelectItem>
-                        
+
                         {/* Customer Service */}
                         <SelectItem value="customer">Customer Service</SelectItem>
                         <SelectItem value="support">Technical Support</SelectItem>
-                        
+
                         {/* General */}
                         <SelectItem value="general">General Interview</SelectItem>
                         <SelectItem value="leadership">Leadership Position</SelectItem>
@@ -203,7 +203,7 @@ const Dashboard = () => {
               </DialogContent>
             </Dialog>
 
-            <Card 
+            <Card
               className="cursor-pointer hover:shadow-elegant transition-smooth transform hover:scale-[1.02] bg-gradient-glass backdrop-blur-sm border-white/20"
               onClick={() => setIsSessionManagementOpen(true)}
             >
@@ -252,8 +252,8 @@ const Dashboard = () => {
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-2xl font-semibold">Recent Sessions</h3>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => setIsSessionManagementOpen(true)}
                     className="flex items-center gap-2"
                   >
@@ -290,8 +290,8 @@ const Dashboard = () => {
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2">
                     {conversations.slice(0, 4).map((conversation) => (
-                      <Card 
-                        key={conversation.id} 
+                      <Card
+                        key={conversation.id}
                         className="cursor-pointer hover:shadow-elegant transition-smooth transform hover:scale-[1.02] bg-gradient-glass backdrop-blur-sm border-white/20"
                         onClick={() => navigate(`/chat/${conversation.id}`)}
                       >
@@ -323,7 +323,7 @@ const Dashboard = () => {
                 )}
               </div>
             </div>
-            
+
             <div>
               <ProgressCard />
             </div>
@@ -363,8 +363,8 @@ const Dashboard = () => {
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {conversations.map((conversation) => (
-                  <Card 
-                    key={conversation.id} 
+                  <Card
+                    key={conversation.id}
                     className="cursor-pointer hover:shadow-elegant transition-smooth transform hover:scale-[1.02] bg-gradient-glass backdrop-blur-sm border-white/20"
                     onClick={() => navigate(`/chat/${conversation.id}`)}
                   >
@@ -389,13 +389,13 @@ const Dashboard = () => {
       </div>
 
       {/* Dialogs */}
-      <ProfileDialog 
-        open={isProfileDialogOpen} 
-        onOpenChange={setIsProfileDialogOpen} 
+      <ProfileDialog
+        open={isProfileDialogOpen}
+        onOpenChange={setIsProfileDialogOpen}
       />
-      <SessionManagementDialog 
-        open={isSessionManagementOpen} 
-        onOpenChange={setIsSessionManagementOpen} 
+      <SessionManagementDialog
+        open={isSessionManagementOpen}
+        onOpenChange={setIsSessionManagementOpen}
       />
     </div>
   );

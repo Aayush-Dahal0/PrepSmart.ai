@@ -10,7 +10,7 @@ async def get_pool() -> asyncpg.Pool:
         # ✅ Create SSL context for Supabase
         ssl_context = ssl.create_default_context(cafile=None)
         ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_REQUIRED
+        ssl_context.verify_mode = ssl.CERT_NONE
 
         _pool = await asyncpg.create_pool(
             dsn=settings.DATABASE_URL,

@@ -22,16 +22,16 @@ const AuthPage = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       await login(loginData.email, loginData.password);
       toast({ title: "Welcome back!", description: "Successfully logged in." });
       navigate('/dashboard');
     } catch (error) {
-      toast({ 
-        title: "Login failed", 
-        description: error instanceof Error ? error.message : "Please check your credentials.", 
-        variant: "destructive" 
+      toast({
+        title: "Login failed",
+        description: error instanceof Error ? error.message : "Please check your credentials.",
+        variant: "destructive"
       });
     }
     setLoading(false);
@@ -40,31 +40,31 @@ const AuthPage = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     // Validate password confirmation
     if (registerData.password !== registerData.confirmPassword) {
-      toast({ 
-        title: "Password mismatch", 
-        description: "Passwords do not match. Please try again.", 
-        variant: "destructive" 
+      toast({
+        title: "Password mismatch",
+        description: "Passwords do not match. Please try again.",
+        variant: "destructive"
       });
       setLoading(false);
       return;
     }
-    
+
     try {
       await register(registerData.email, registerData.password, registerData.name);
-      toast({ 
-        title: "Check your email!", 
+      toast({
+        title: "Check your email!",
         description: "We've sent you a verification link. Please verify your email before signing in.",
         variant: "default"
       });
       // Don't navigate to dashboard - wait for email verification
     } catch (error) {
-      toast({ 
-        title: "Registration failed", 
-        description: error instanceof Error ? error.message : "Please try again.", 
-        variant: "destructive" 
+      toast({
+        title: "Registration failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive"
       });
     }
     setLoading(false);
@@ -73,21 +73,21 @@ const AuthPage = () => {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       await forgotPassword(resetEmail);
-      toast({ 
-        title: "Reset link sent!", 
+      toast({
+        title: "Reset link sent!",
         description: "Check your email for password reset instructions.",
         variant: "default"
       });
       setForgotPasswordMode(false);
       setResetEmail('');
     } catch (error) {
-      toast({ 
-        title: "Reset failed", 
-        description: error instanceof Error ? error.message : "Please try again.", 
-        variant: "destructive" 
+      toast({
+        title: "Reset failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive"
       });
     }
     setLoading(false);
@@ -101,7 +101,7 @@ const AuthPage = () => {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-primary rounded-xl">
-                <BrainCircuit className="h-8 w-8 text-white" />
+                <img src="/logo.png" alt="PrepSmart Logo" className="h-8 w-8 object-contain invert brightness-0" />
               </div>
               <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
                 PrepSmart
@@ -172,17 +172,17 @@ const AuthPage = () => {
                         required
                       />
                     </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
-                      variant="gradient" 
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      variant="gradient"
                       disabled={loading}
                     >
                       {loading ? 'Signing in...' : 'Sign In'}
                     </Button>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
+                    <Button
+                      type="button"
+                      variant="ghost"
                       className="w-full text-sm"
                       onClick={() => setForgotPasswordMode(true)}
                     >
@@ -202,17 +202,17 @@ const AuthPage = () => {
                         required
                       />
                     </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
-                      variant="gradient" 
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      variant="gradient"
                       disabled={loading}
                     >
                       {loading ? 'Sending reset link...' : 'Send Reset Link'}
                     </Button>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
+                    <Button
+                      type="button"
+                      variant="ghost"
                       className="w-full text-sm"
                       onClick={() => {
                         setForgotPasswordMode(false);
@@ -269,10 +269,10 @@ const AuthPage = () => {
                       required
                     />
                   </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    variant="gradient" 
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    variant="gradient"
                     disabled={loading}
                   >
                     {loading ? 'Creating account...' : 'Create Account'}

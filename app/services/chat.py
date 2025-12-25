@@ -1,50 +1,47 @@
-import httpx
-import json
+import google.generativeai as genai
 from datetime import datetime
 from fastapi import HTTPException
 from ..config import settings
 
 SYSTEM_PROMPT = (
     "You are an AI interviewer. Ask one question at a time for the chosen domain. "
-    "After a short exchange, give a brief score + actionable tips."
+    "After a short exchange, give a brief score + actionable tips. "
+    "Use bold text for section headers instead of markdown hashtags (#). Keep it conversational."
 )
+
+# Configure Gemini
+genai.configure(api_key=settings.GEMINI_API_KEY)
 
 async def stream_ollama(messages: list[dict]):
     """
-    Stream text chunks from a local Ollama server (/api/chat).
-    `messages` should be a list of {role, content}.
+    Stream text chunks from Google Gemini API.
+    Kept name 'stream_ollama' for compatibility with main.py, 
+    but internally uses Gemini.
     """
-    model = getattr(settings, "OLLAMA_MODEL", "llama3")
-    url = getattr(settings, "OLLAMA_URL", "http://localhost:11434/api/chat")
-
-    # Always inject system message at start
-    if not messages or messages[0].get("role") != "system":
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}] + messages
-
-    payload = {"model": model, "messages": messages, "stream": True}
-
     try:
-        async with httpx.AsyncClient(timeout=None) as client:
-            async with client.stream("POST", url, json=payload) as r:
-                r.raise_for_status()
-                async for line in r.aiter_lines():
-                    if not line:
-                        continue
-                    try:
-                        data = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
+        model = genai.GenerativeModel('gemini-flash-latest')
+        
+        # Convert messages to Gemini format
+        # Gemini expects history as list of Content objects, but we can use simple generation for now
+        # or construct a chat session. For simplicity in this stateless API, we'll format the prompt.
+        
+        # Simple prompt construction
+        full_prompt = f"System: {SYSTEM_PROMPT}\n"
+        for m in messages:
+            role = "User" if m["role"] == "user" else "Model"
+            if m["role"] == "system": continue # already added
+            full_prompt += f"{role}: {m['content']}\n"
+        full_prompt += "Model: "
 
-                    if "message" in data:
-                        chunk = data["message"].get("content", "")
-                        if chunk:
-                            yield {
-                                "role": "assistant",
-                                "content": chunk,
-                                "timestamp": datetime.utcnow().isoformat(),
-                            }
+        response = model.generate_content(full_prompt, stream=True)
 
-                    if data.get("done"):
-                        break
-    except httpx.HTTPError as e:
-        raise HTTPException(status_code=502, detail=f"Ollama API error: {e}")
+        for chunk in response:
+            if chunk.text:
+                yield {
+                    "role": "assistant",
+                    "content": chunk.text,
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Gemini API error: {str(e)}")
