@@ -13,6 +13,7 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
+  signInWithOAuth: (provider: 'google' | 'github') => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
@@ -143,6 +144,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // OAuth Login function
+  const signInWithOAuth = async (provider: 'google' | 'github'): Promise<void> => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+    } catch (error) {
+      console.error('OAuth login error:', error);
+      throw error;
+    }
+  };
+
   // Forgot password function
   const forgotPassword = async (email: string): Promise<void> => {
     try {
@@ -170,6 +190,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       user,
       login,
       register,
+      signInWithOAuth,
       forgotPassword,
       logout,
       loading
