@@ -55,8 +55,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setUser({
             id: session.user.id,
             email: session.user.email!,
-            name: session.user.user_metadata?.name,
+            name: session.user.user_metadata?.name || session.user.user_metadata?.full_name,
           });
+
+          // Clean up URL hash after OAuth redirect
+          if (window.location.hash && window.location.hash.includes('access_token')) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
