@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { BrainCircuit, Briefcase, Users, ChevronRight, Github } from 'lucide-react';
+import { BrainCircuit, Briefcase, Users, ChevronRight } from 'lucide-react';
 
 const AuthPage = () => {
   const [loginData, setLoginData] = useState({ email: '', password: '' });
@@ -214,7 +214,7 @@ const AuthPage = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <Button variant="outline" onClick={() => handleOAuthLogin('google')} disabled={loading}>
                       <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                         <path
@@ -234,11 +234,7 @@ const AuthPage = () => {
                           fill="#EA4335"
                         />
                       </svg>
-                      Google
-                    </Button>
-                    <Button variant="outline" onClick={() => handleOAuthLogin('github')} disabled={loading}>
-                      <Github className="mr-2 h-4 w-4" />
-                      GitHub
+                      Continue with Google
                     </Button>
                   </div>
                 ) : (
