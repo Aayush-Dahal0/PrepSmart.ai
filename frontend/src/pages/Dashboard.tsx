@@ -81,7 +81,7 @@ const Dashboard = () => {
           {/* Welcome Section */}
           <div className="space-y-4 animate-fade-in">
             <h2 className="text-3xl font-bold">
-              Welcome back, {user?.name || 'there'}! 👋
+              Welcome back, {user?.name || 'there'}!
             </h2>
             <p className="text-muted-foreground text-lg">
               Ready to practice and perfect your interview skills?
