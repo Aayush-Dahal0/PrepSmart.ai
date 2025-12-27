@@ -61,7 +61,7 @@ Click Send.
 }
 
 
-👉 Copy the access_token.
+ Copy the access_token.
 
 🔹 Step 3. Test Conversations APIs
 ➤ Create Conversation
@@ -104,7 +104,7 @@ Click Send → You’ll see all convos.
 
 🔹 Step 4. Test Chat Streaming
 
-⚡ This route streams Server-Sent Events (SSE). Postman can show the full response when finished, but it won’t stream nicely in real-time. Still, you can test.
+ This route streams Server-Sent Events (SSE). Postman can show the full response when finished, but it won’t stream nicely in real-time. Still, you can test.
 
 New request → POST.
 
@@ -134,7 +134,7 @@ data: Can you explain the difference...
 data: [DONE]
 
 
-👉 For real-time streaming (instead of chunked dump), use curl or your React frontend.
+ For real-time streaming (instead of chunked dump), use curl or your React frontend.
 
 🔹 Step 5. Test Messages History
 
@@ -149,6 +149,6 @@ Add Authorization: Bearer <token>.
 
 Send → You’ll see full chat history stored in DB.
 
-✅ That’s it! Now you can hit all APIs in Postman.
+ That’s it! Now you can hit all APIs in Postman.
 
 Do you want me to make a ready-to-import Postman Collection (JSON file) so you just open it in Postman and all routes (auth, conversations, chat, messages) are preloaded?

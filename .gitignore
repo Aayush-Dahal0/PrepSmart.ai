@@ -19,5 +19,6 @@ minio_data/
 .vscode/
 .idea/
 
+# Ignore api_collections.txt and schema.txt
 api_collections.txt
 schema.txt
