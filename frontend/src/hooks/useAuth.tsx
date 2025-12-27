@@ -157,13 +157,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // OAuth Login function
   const signInWithOAuth = async (provider: 'google' | 'github'): Promise<void> => {
     try {
-      // Use the production domain that has proper configuration
-      const redirectUrl = 'https://prep-smart-ai-git-main-aayush-dahals-projects.vercel.app/dashboard';
-
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: redirectUrl,
+          redirectTo: `${window.location.origin}/dashboard`,
         },
       });
 
